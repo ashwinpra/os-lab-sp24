@@ -1,3 +1,10 @@
+.vscode
+.DS_Store
+*/.vscode
+*/.DS_Store
+*/tests/
+*/examples/a.out
+
 # Prerequisites
 *.d
 

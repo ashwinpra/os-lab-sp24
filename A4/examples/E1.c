@@ -14,13 +14,16 @@
 
 #include <stdio.h>
 #include <sys/ipc.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <sys/shm.h>	/*  This file is necessary for using shared
 			    memory constructs
 			*/
 
-main()
+int main()
 {
-	int shmid. status;
+	int shmid, status;
 	int *a, *b;
 	int i;
 
@@ -34,6 +37,8 @@ main()
 	    man pages for details on the other two parameters of shmget()
 	*/
 	shmid = shmget(IPC_PRIVATE, 2*sizeof(int), 0777|IPC_CREAT);
+    a = (int *) shmat(shmid, 0, 0);
+
 			/* We request an array of two integers */
 
 	/* 
@@ -72,9 +77,9 @@ main()
 		    are the same as the memory locations b[0] and b[1] of
 		    the parent, since the memory is shared.
 		*/
-		a = (int *) shmat(shmid, 0, 0);
 
 		a[0] = 0; a[1] = 1;
+        printf("Parent initially writes: %d,%d\n",a[0],a[1]);
 		for( i=0; i< 10; i++) {
 			sleep(1);
 			a[0] = a[0] + a[1];
@@ -118,7 +123,7 @@ main()
 	memory. Similarly, when the reader is faster than the writer, then
 	the reader may read the same values more than once. Perfect 
 	inter-process communication requires synchronization between the
-	reader and the writer. You can use semaphores to do this.
+	reader and the writer. You can use  to do this.
 
 	Further note that "sleep" is not a synchronization construct.
         We use "sleep" to model some amount of computation which may

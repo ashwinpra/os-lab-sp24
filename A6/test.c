@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<event.h>
 
 void get_time(char* timestr, int current_time){
     // taking base time as 9:00 am, return current time s
@@ -23,9 +24,23 @@ void get_time(char* timestr, int current_time){
 
 
 int main(){
-    char* timestr;
-    timestr = (char*)malloc(10);
-    get_time(timestr, -24);
-    printf("%s\n", timestr);
+    eventQ E = initEQ("arrival.txt");
+    while(!emptyQ(E)){
+        event e = nextevent(E);
+        if(e.type == 'P'){
+            char timestr[20];
+            get_time(timestr, e.time);
+            printf("%s Patient arrives\n", timestr);
+        } else if(e.type == 'R'){
+            char timestr[20];
+            get_time(timestr, e.time);
+            printf("%s Report arrives\n", timestr);
+        } else if(e.type == 'S'){
+            char timestr[20];
+            get_time(timestr, e.time);
+            printf("%s Sales Rep arrives\n", timestr);
+        }
+        E = delevent(E);
+    }
     return 0;
 }

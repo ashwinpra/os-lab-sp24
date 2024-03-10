@@ -316,7 +316,7 @@ int main() {
                     num_reporters++;
                     get_time(timestr, next.time);
                     printf("[%s] Reporter %d arrives\n", timestr, num_reporters);
-                    printf("[%s] Reporter %d leaves (quota full)\n", timestr, num_reporters);
+                    printf("[%s] Reporter %d leaves (session over)\n", timestr, num_reporters);
                     E = delevent(E);
                     continue;
                 }
@@ -346,6 +346,14 @@ int main() {
             } 
             else if(next.type == 'P'){
                 if(num_patients >= MAX_PATIENTS){
+                     if(num_served_patients >= MAX_PATIENTS && num_served_salesreps >= MAX_SALESREPS){
+                        num_salesreps++;
+                        get_time(timestr, next.time);
+                        printf("[%s] Salesrep %d arrives\n", timestr, num_salesreps);
+                        printf("[%s] Salesrep %d leaves (session over)\n", timestr, num_salesreps);
+                        E = delevent(E);
+                        continue;
+                    }
                     num_patients++;
                     get_time(timestr, next.time);
                     printf("[%s] Patient %d arrives\n", timestr, num_patients);
@@ -376,6 +384,14 @@ int main() {
             } 
             else if(next.type == 'S'){
                 if (num_salesreps >= MAX_SALESREPS) {
+                    if(num_served_patients >= MAX_PATIENTS && num_served_salesreps >= MAX_SALESREPS){
+                        num_salesreps++;
+                        get_time(timestr, next.time);
+                        printf("[%s] Salesrep %d arrives\n", timestr, num_salesreps);
+                        printf("[%s] Salesrep %d leaves (session over)\n", timestr, num_salesreps);
+                        E = delevent(E);
+                        continue;
+                    }
                     num_salesreps++;
                     get_time(timestr, next.time);
                     printf("[%s] Salesrep %d arrives\n", timestr, num_salesreps);

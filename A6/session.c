@@ -1,3 +1,4 @@
+// this had to be added because pthread_barrier* functions are not available in macOS
 #ifndef PTHREAD_BARRIER_H_
 #define PTHREAD_BARRIER_H_
 

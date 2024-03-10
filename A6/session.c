@@ -1,70 +1,4 @@
-#ifndef PTHREAD_BARRIER_H_
-#define PTHREAD_BARRIER_H_
-
-#include <pthread.h>
-#include <errno.h>
-
-typedef int pthread_barrierattr_t;
-typedef struct
-{
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    int count;
-    int tripCount;
-} pthread_barrier_t;
-
-
-int pthread_barrier_init(pthread_barrier_t *barrier, const pthread_barrierattr_t *attr, unsigned int count)
-{
-    if(count == 0)
-    {
-        errno = EINVAL;
-        return -1;
-    }
-    if(pthread_mutex_init(&barrier->mutex, 0) < 0)
-    {
-        return -1;
-    }
-    if(pthread_cond_init(&barrier->cond, 0) < 0)
-    {
-        pthread_mutex_destroy(&barrier->mutex);
-        return -1;
-    }
-    barrier->tripCount = count;
-    barrier->count = 0;
-
-    return 0;
-}
-
-int pthread_barrier_destroy(pthread_barrier_t *barrier)
-{
-    pthread_cond_destroy(&barrier->cond);
-    pthread_mutex_destroy(&barrier->mutex);
-    return 0;
-}
-
-int pthread_barrier_wait(pthread_barrier_t *barrier)
-{
-    pthread_mutex_lock(&barrier->mutex);
-    ++(barrier->count);
-    if(barrier->count >= barrier->tripCount)
-    {
-        barrier->count = 0;
-        pthread_cond_broadcast(&barrier->cond);
-        pthread_mutex_unlock(&barrier->mutex);
-        return 1;
-    }
-    else
-    {
-        pthread_cond_wait(&barrier->cond, &(barrier->mutex));
-        pthread_mutex_unlock(&barrier->mutex);
-        return 0;
-    }
-}
-
-#endif // PTHREAD_BARRIER_H_
-
-#include <stdio.h> 
+n#include <stdio.h> 
 #include <stdlib.h> 
 #include <pthread.h> 
 #include <event.h>
@@ -75,6 +9,8 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 
 #define MAX_PATIENTS 25
 #define MAX_SALESREPS 3
+
+eventQ E; 
 
 int current_time = 0;
 char* timestr; 
@@ -151,7 +87,6 @@ void* doctor(void* darg){
         doc_done = 0;
         pthread_mutex_unlock(&doctor_mutex);
 
-
         if(doc_session_done == 1){
             get_time(timestr, current_time);
             printf(COLOR_RED "[%s] Doctor leaves\n" COLOR_RESET, timestr);
@@ -190,6 +125,8 @@ void* patient(void* parg){
 
     current_time += duration;
 
+    E = addevent(E, (event){'D', current_time, 0});
+
     pthread_mutex_unlock(&patient_mutex);
     pthread_barrier_wait(&barrier);
     pthread_exit(NULL);
@@ -220,6 +157,9 @@ void* salesrep(void* sarg){
 
     current_time += duration;
 
+    E = addevent(E, (event){'D', current_time, 0});
+
+
     pthread_mutex_unlock(&salesrep_mutex);
     pthread_barrier_wait(&barrier);
     pthread_exit(NULL);
@@ -249,6 +189,8 @@ void* reporter(void* rarg){
 
     current_time += duration;
 
+    E = addevent(E, (event){'D', current_time, 0});
+
     pthread_mutex_unlock(&reporter_mutex);
     pthread_barrier_wait(&barrier);
     pthread_exit(NULL);
@@ -261,7 +203,7 @@ int main() {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     pthread_barrier_init(&barrier, NULL, 3);
 
-    eventQ E = initEQ("arrival.txt");
+    E = initEQ("arrival.txt");
 
     timestr = (char*)malloc(10);
 
@@ -397,6 +339,11 @@ int main() {
 
                 get_time(timestr, next.time);
                 printf("\t[%s] Salesrep %d arrives\n", timestr, num_salesreps);
+            }
+
+            else if (next.type == 'D') {
+                E = delevent(E);
+                continue;
             }
 
             if(doc_arrived == 2) {

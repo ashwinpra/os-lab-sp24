@@ -1,7 +1,5 @@
 /*
     TODO: handle case of no more patients or sales reps allowed
-    TODO: handle multiple people arriving when doctor is not available 
-    ig use doc_arrived = 0 again? 
 */
 
 #define COLOR_RED     "\x1b[31m"
@@ -86,6 +84,8 @@ int current_time = 0;
 int num_reporters = 0;
 int num_patients = 0;
 int num_salesreps = 0;
+int num_served_patients = 0;
+int num_served_salesreps = 0;
 
 int num_waiting_reporters = 0;
 int num_waiting_patients = 0;
@@ -96,6 +96,8 @@ int rep_done = 0;
 int pat_done = 0;
 int srep_done = 0;
 int asst_done = 0;
+
+int doc_session_done = 0;
 
 pthread_mutex_t doctor_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t patient_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -112,6 +114,7 @@ pthread_barrier_t barrier;
 pthread_attr_t attr;
 
 char* timestr; 
+char* timestr2; 
 
 // struct to hold visitor information
 typedef struct {
@@ -155,12 +158,15 @@ void* doctor(void* darg){
         doc_done = 0;
         pthread_mutex_unlock(&doctor_mutex);
 
-        get_time(timestr, current_time);
-        printf(COLOR_RED "[%s] Doctor has next visitor\n" COLOR_RESET, timestr);
 
-        if(num_patients >= MAX_PATIENTS && num_salesreps >= MAX_SALESREPS){
+        if(doc_session_done == 1){
+            get_time(timestr, current_time);
+            printf(COLOR_RED "[%s] Doctor leaves\n" COLOR_RESET, timestr);
             pthread_exit(NULL);
         }
+        
+        get_time(timestr, current_time);
+        printf(COLOR_RED "[%s] Doctor has next visitor\n" COLOR_RESET, timestr);
 
         pthread_barrier_wait(&barrier);
     }
@@ -193,7 +199,6 @@ void* patient(void* parg){
     current_time += duration;
 
     pthread_mutex_unlock(&patient_mutex);
-
 
     pthread_barrier_wait(&barrier);
 
@@ -259,7 +264,7 @@ void* reporter(void* rarg){
     get_time(end_time, current_time + duration);
 
     printf(COLOR_BLUE "[%s - %s] Reporter %d is in doctor's chamber\n" COLOR_RESET, start_time, end_time, id);
-    
+
     current_time += duration;
 
     pthread_mutex_unlock(&reporter_mutex);
@@ -279,6 +284,7 @@ int main() {
     eventQ E = initEQ("arrival.txt");
 
     timestr = (char*)malloc(10);
+    timestr2 = (char*)malloc(10);
 
     pthread_barrier_init(&barrier, NULL, 3);
 
@@ -292,10 +298,22 @@ int main() {
     int doc_arrived = 0;
 
     while(!emptyQ(E)){
+        // printf("Served patients: %d, Served salesreps: %d\n", num_served_patients, num_served_salesreps);
+        
 
-        if (num_patients >= MAX_PATIENTS && num_salesreps >= MAX_SALESREPS) {
-            printf("No more patients or sales reps allowed\n");
-            break;
+        if (num_served_patients == MAX_PATIENTS && num_served_salesreps == MAX_SALESREPS) {
+            // wait for all visitors to be served
+            get_time(timestr, current_time);
+            num_served_patients++; 
+            num_served_salesreps++;
+            // wake up doctor
+            pthread_mutex_lock(&doctor_mutex);
+            doc_session_done = 1;
+            doc_done = 1;
+            pthread_cond_signal(&doctor_cond);
+            pthread_mutex_unlock(&doctor_mutex);
+            pthread_join(doctor_thread, NULL);
+            continue;
         }
 
         event next = nextevent(E);
@@ -303,16 +321,21 @@ int main() {
         vinfo nextvinfo;
         nextvinfo.duration = next.duration;
 
-        get_time(timestr, next.time);
-
-        // doc_arrived will be 1 only when next.time > 0 
-        if(next.time > current_time && (num_waiting_reporters > 0 || num_waiting_patients > 0 || num_waiting_salesreps > 0)){
+        if(next.time > current_time){
             doc_arrived = 1;
         }
 
         if(doc_arrived == 0 || doc_arrived == 2) {
-
             if(next.type == 'R'){
+                if(num_served_patients >= MAX_PATIENTS && num_served_salesreps >= MAX_SALESREPS){
+                    num_reporters++;
+                    get_time(timestr, next.time);
+                    printf("[%s] Reporter %d arrives\n", timestr, num_reporters);
+                    printf("[%s] Reporter %d leaves (quota full)\n", timestr, num_reporters);
+                    E = delevent(E);
+                    continue;
+                }
+
                 pthread_t report_thread;
                 nextvinfo.id = num_reporters+1;
                 visitor_infos[num_visitors] = nextvinfo;
@@ -333,9 +356,19 @@ int main() {
                 num_waiting_reporters++;
                 num_reporters++;
 
+                get_time(timestr, next.time);
                 printf("\t[%s] Reporter %d arrives\n", timestr, num_reporters);
             } 
-            else if(next.type == 'P' && num_patients < MAX_PATIENTS){
+            else if(next.type == 'P'){
+                if(num_patients >= MAX_PATIENTS){
+                    num_patients++;
+                    get_time(timestr, next.time);
+                    printf("[%s] Patient %d arrives\n", timestr, num_patients);
+                    printf("[%s] Patient %d leaves (quota full)\n", timestr, num_patients);
+                    E = delevent(E);
+                    continue;
+                }
+
                 pthread_t patient_thread;
                 nextvinfo.id = num_patients+1;
                 visitor_infos[num_visitors] = nextvinfo;
@@ -353,9 +386,19 @@ int main() {
                 num_waiting_patients++;
                 num_patients++;
 
+                get_time(timestr, next.time);
                 printf("\t[%s] Patient %d arrives\n", timestr, num_patients);
             } 
-            else if(next.type == 'S' && num_salesreps < MAX_SALESREPS){
+            else if(next.type == 'S'){
+                if (num_salesreps >= MAX_SALESREPS) {
+                    num_salesreps++;
+                    get_time(timestr, next.time);
+                    printf("[%s] Salesrep %d arrives\n", timestr, num_salesreps);
+                    printf("[%s] Salesrep %d leaves (quota full)\n", timestr, num_salesreps);
+                    E = delevent(E);
+                    continue;
+                }
+
                 pthread_t salesrep_thread;
                 nextvinfo.id = num_salesreps+1;
                 visitor_infos[num_visitors] = nextvinfo;
@@ -373,12 +416,22 @@ int main() {
                 num_waiting_salesreps++;
                 num_salesreps++;
 
+                get_time(timestr, next.time);
                 printf("\t[%s] Salesrep %d arrives\n", timestr, num_salesreps);
             }
 
             if(doc_arrived == 2) {
                 get_time(timestr, current_time);
                 // printf("[%s] [%s] waiting people: %d %d %d\n", timestr, timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+
+                if(current_time > next.time) {
+                    // it is possible that multiple people arrive when doctor is not available
+                    // printf("skipping time\n");
+                    // printf("waiting people: %d %d %d\n", num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+                    doc_arrived = 0;
+                    E = delevent(E);
+                    continue;
+                }
 
                 if(num_waiting_reporters > 0 || num_waiting_patients > 0 || num_waiting_salesreps > 0){
                     pthread_mutex_lock(&doctor_mutex);
@@ -389,7 +442,7 @@ int main() {
 
                 if(num_waiting_reporters > 0) {
                     // reporter has priority 
-                    printf("2 [%s] waiting people: %d %d %d, reporter has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+                    // printf("2 [%s] waiting people: %d %d %d, reporter has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
                     pthread_mutex_lock(&reporter_mutex);
                     rep_done = 1;
                     num_waiting_reporters--;
@@ -399,33 +452,38 @@ int main() {
                 } 
                 else if(num_waiting_patients > 0) {
                     // patient has priority
-                    printf("2 [%s] waiting people: %d %d %d, patient has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+                    // printf("2 [%s] waiting people: %d %d %d, patient has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
                     pthread_mutex_lock(&patient_mutex);
                     pat_done = 1;
                     num_waiting_patients--;
+                    num_served_patients++;
                     pthread_cond_signal(&patient_cond);
                     pthread_mutex_unlock(&patient_mutex);
                     pthread_barrier_wait(&barrier);
                 } 
                 else if(num_waiting_salesreps > 0) {
-                    printf("2 [%s] waiting people: %d %d %d, salesrep has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+                    // printf("2 [%s] waiting people: %d %d %d, salesrep has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
                     pthread_mutex_lock(&salesrep_mutex);
                     srep_done = 1;
                     num_waiting_salesreps--;
+                    num_served_salesreps++;
                     pthread_cond_signal(&salesrep_cond);
                     pthread_mutex_unlock(&salesrep_mutex);
                     pthread_barrier_wait(&barrier);
                 }
 
             }
+
             num_visitors++;
             if(next.time > current_time){
                 current_time = next.time;
             }
             E = delevent(E);
+
         }
 
-        else if(doc_arrived == 1){
+        if(doc_arrived == 1){
+            // printf("waiting people: %d %d %d\n", num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
             // wait for previous visitors to be served
             while(current_time < next.time && (num_waiting_reporters > 0 || num_waiting_patients > 0 || num_waiting_salesreps > 0)){
                 pthread_mutex_lock(&doctor_mutex);
@@ -435,7 +493,7 @@ int main() {
 
                 if(num_waiting_reporters > 0) {
                     // reporter has priority 
-                    printf("1 [%s] waiting people: %d %d %d, reporter has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+                    // printf("1 [%s] waiting people: %d %d %d, reporter has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
                     pthread_mutex_lock(&reporter_mutex);
                     rep_done = 1;
                     num_waiting_reporters--;
@@ -444,27 +502,43 @@ int main() {
                 } 
                 else if(num_waiting_patients > 0) {
                     // patient has priority
-                    printf("1 [%s] waiting people: %d %d %d, patient has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+                    // printf("1 [%s] waiting people: %d %d %d, patient has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
                     pthread_mutex_lock(&patient_mutex);
                     pat_done = 1;
                     num_waiting_patients--;
+                    num_served_patients++;
                     pthread_cond_signal(&patient_cond);
                     pthread_mutex_unlock(&patient_mutex);
                 } 
                 else if(num_waiting_salesreps > 0) {
-                    printf("1 [%s] waiting people: %d %d %d, salesrep has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
+                    // printf("1 [%s] waiting people: %d %d %d, salesrep has priority\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
                     pthread_mutex_lock(&salesrep_mutex);
                     srep_done = 1;
                     num_waiting_salesreps--;
+                    num_served_salesreps++;
                     pthread_cond_signal(&salesrep_cond);
                     pthread_mutex_unlock(&salesrep_mutex);
                 }
 
                 pthread_barrier_wait(&barrier);
             }
+
+            if(current_time < next.time){
+                current_time = next.time;
+            }
+
             doc_arrived = 2;
         }
+
+
     }
+
+    // broken out of while loop, no more events
+    // wait for all visitors to be served
+    pthread_mutex_lock(&doctor_mutex);
+    doc_done = 1;
+    pthread_cond_signal(&doctor_cond);
+    pthread_mutex_unlock(&doctor_mutex);
 
 
     // wait for all threads to finish
@@ -478,114 +552,3 @@ int main() {
     pthread_exit(NULL);
     return 0;
 }
-
-
-/*
-// printf("visitors: %d %d %d\n", num_reporters, num_patients, num_salesreps);
-
-        if(num_patients >= MAX_PATIENTS || num_salesreps >= MAX_SALESREPS){
-            pthread_mutex_lock(&doctor_mutex);
-            doc_done = 1;
-            pthread_cond_signal(&doctor_cond);
-            pthread_mutex_unlock(&doctor_mutex);
-            break;
-        }
-
-        event next = nextevent(E);
-
-        vinfo nextvinfo;
-        nextvinfo.duration = next.duration;
-
-        get_time(timestr, next.time);
-
-        if(next.type == 'R'){
-            pthread_t report_thread;
-            nextvinfo.id = num_reporters+1;
-            if(pthread_create(&report_thread, &attr, reporter, (void*)(&nextvinfo))){
-                fprintf(stderr, "Error creating report thread\n");
-                exit(1);
-            }
-            num_waiting_reporters++;
-            num_reporters++;
-
-            printf("\t[%s] Reporter %d arrives\n", timestr, num_reporters);
-        } 
-        else if(next.type == 'P'){
-            pthread_t patient_thread;
-            nextvinfo.id = num_patients+1;
-            if(pthread_create(&patient_thread, &attr, patient, (void*)(&nextvinfo))){
-                fprintf(stderr, "Error creating patient thread\n");
-                exit(1);
-            }
-            num_waiting_patients++;
-            num_patients++;
-
-            printf("\t[%s] Patient %d arrives\n", timestr, num_patients);
-        } 
-        else if(next.type == 'S'){
-            pthread_t salesrep_thread;
-            nextvinfo.id = num_salesreps+1;
-            if(pthread_create(&salesrep_thread, &attr, salesrep, (void*)(&nextvinfo))){
-                fprintf(stderr, "Error creating salesrep thread\n");
-                exit(1);
-            }
-            num_waiting_salesreps++;
-            num_salesreps++;
-
-            printf("\t[%s] Salesrep %d arrives\n", timestr, num_salesreps);
-        }
-
-        if(next.time > current_time){
-            current_time = next.time;
-        }
-
-        if (current_time > 0) {
-
-            // printf("[%s] waiting people: %d %d %d\n", timestr, num_waiting_reporters, num_waiting_patients, num_waiting_salesreps);
-
-            pthread_mutex_lock(&doctor_mutex);
-            doc_done = 1; 
-            pthread_cond_signal(&doctor_cond);
-            pthread_mutex_unlock(&doctor_mutex);
-
-            // printf("Let's see who's waiting\n");
-
-            if(num_waiting_reporters > 0) {
-                // printf("Reporter has priority\n");
-                // reporter has priority 
-                pthread_mutex_lock(&reporter_mutex);
-                rep_done = 1;
-                num_waiting_reporters--;
-                pthread_cond_signal(&reporter_cond);
-                pthread_mutex_unlock(&reporter_mutex);
-
-            } 
-            else if(num_waiting_patients > 0) {
-                // printf("Patient has priority\n");
-                // patient has priority
-                pthread_mutex_lock(&patient_mutex);
-                pat_done = 1;
-                num_waiting_patients--;
-                pthread_cond_signal(&patient_cond);
-                pthread_mutex_unlock(&patient_mutex);
-
-            } 
-            else if(num_waiting_salesreps > 0) {
-                // printf("Salesrep has priority\n");
-                pthread_mutex_lock(&salesrep_mutex);
-                srep_done = 1;
-                num_waiting_salesreps--;
-                pthread_cond_signal(&salesrep_cond);
-                pthread_mutex_unlock(&salesrep_mutex);
-            } 
-
-            pthread_barrier_wait(&barrier);
-
-            }
-
-        // if(next.time > current_time){
-        //     current_time = next.time;
-        // }
-
-        E = delevent(E);
-*/

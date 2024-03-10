@@ -1,0 +1,92 @@
+	[09:15am] Patient 1 arrives
+[31m[09:15am] Doctor has next visitor
+[0m[34m[09:15am - 09:25am] Patient 1 is in doctor's chamber
+[0m	[09:16am] Reporter 1 arrives
+	[09:25am] Patient 2 arrives
+[31m[09:25am] Doctor has next visitor
+[0m[34m[09:25am - 09:26am] Reporter 1 is in doctor's chamber
+[0m[31m[09:26am] Doctor has next visitor
+[0m[34m[09:26am - 09:33am] Patient 2 is in doctor's chamber
+[0m	[09:34am] Patient 3 arrives
+[31m[09:34am] Doctor has next visitor
+[0m[34m[09:34am - 09:48am] Patient 3 is in doctor's chamber
+[0m	[09:39am] Patient 4 arrives
+	[09:40am] Patient 5 arrives
+	[09:42am] Patient 6 arrives
+	[09:46am] Patient 7 arrives
+[31m[09:48am] Doctor has next visitor
+[0m[34m[09:48am - 10:00am] Patient 4 is in doctor's chamber
+[0m	[09:56am] Patient 8 arrives
+[31m[10:00am] Doctor has next visitor
+[0m[34m[10:00am - 10:12am] Patient 5 is in doctor's chamber
+[0m	[10:06am] Salesrep 1 arrives
+	[10:09am] Patient 9 arrives
+[31m[10:12am] Doctor has next visitor
+[0m[34m[10:12am - 10:27am] Patient 6 is in doctor's chamber
+[0m	[10:17am] Patient 10 arrives
+	[10:19am] Patient 11 arrives
+[31m[10:27am] Doctor has next visitor
+[0m[34m[10:27am - 10:33am] Patient 7 is in doctor's chamber
+[0m	[10:33am] Reporter 2 arrives
+[31m[10:33am] Doctor has next visitor
+[0m[34m[10:33am - 10:35am] Reporter 2 is in doctor's chamber
+[0m	[10:33am] Salesrep 2 arrives
+	[10:35am] Patient 12 arrives
+[31m[10:35am] Doctor has next visitor
+[0m[34m[10:35am - 10:49am] Patient 8 is in doctor's chamber
+[0m	[10:39am] Patient 13 arrives
+	[10:44am] Salesrep 3 arrives
+[31m[10:49am] Doctor has next visitor
+[0m[34m[10:49am - 10:54am] Patient 9 is in doctor's chamber
+[0m[31m[10:54am] Doctor has next visitor
+[0m[34m[10:54am - 11:02am] Patient 10 is in doctor's chamber
+[0m	[10:55am] Patient 14 arrives
+[31m[11:02am] Doctor has next visitor
+[0m[34m[11:02am - 11:17am] Patient 11 is in doctor's chamber
+[0m	[11:04am] Patient 15 arrives
+	[11:05am] Patient 16 arrives
+[31m[11:17am] Doctor has next visitor
+[0m[34m[11:17am - 11:23am] Patient 12 is in doctor's chamber
+[0m[31m[11:23am] Doctor has next visitor
+[0m[34m[11:23am - 11:29am] Patient 13 is in doctor's chamber
+[0m[31m[11:29am] Doctor has next visitor
+[0m[34m[11:29am - 11:38am] Patient 14 is in doctor's chamber
+[0m[11:33am] Salesrep 4 arrives
+[11:33am] Salesrep 4 leaves (quota full)
+	[11:33am] Salesrep 5 arrives
+[31m[11:38am] Doctor has next visitor
+[0m[34m[11:38am - 11:51am] Patient 15 is in doctor's chamber
+[0m[31m[11:51am] Doctor has next visitor
+[0m[34m[11:51am - 11:59am] Patient 16 is in doctor's chamber
+[0m[31m[11:59am] Doctor has next visitor
+[0m[34m[11:59am - 12:05pm] Sales representative 1 is in doctor's chamber
+[0m	[12:01pm] Patient 17 arrives
+	[12:01pm] Patient 18 arrives
+[31m[12:05pm] Doctor has next visitor
+[0m[34m[12:05pm - 12:19pm] Patient 17 is in doctor's chamber
+[0m	[12:07pm] Reporter 3 arrives
+	[12:13pm] Reporter 4 arrives
+[31m[12:19pm] Doctor has next visitor
+[0m[34m[12:19pm - 12:20pm] Reporter 3 is in doctor's chamber
+[0m[31m[12:20pm] Doctor has next visitor
+[0m[34m[12:20pm - 12:21pm] Reporter 4 is in doctor's chamber
+[0m[31m[12:21pm] Doctor has next visitor
+[0m[34m[12:21pm - 12:35pm] Patient 18 is in doctor's chamber
+[0m	[12:24pm] Patient 19 arrives
+[31m[12:35pm] Doctor has next visitor
+[0m[34m[12:35pm - 12:45pm] Patient 19 is in doctor's chamber
+[0m	[12:38pm] Patient 20 arrives
+[12:44pm] Salesrep 6 arrives
+[12:44pm] Salesrep 6 leaves (quota full)
+	[12:44pm] Salesrep 7 arrives
+[31m[12:45pm] Doctor has next visitor
+[0m[34m[12:45pm - 12:54pm] Patient 20 is in doctor's chamber
+[0m[31m[12:54pm] Doctor has next visitor
+[0m[34m[12:54pm - 01:03pm] Sales representative 2 is in doctor's chamber
+[0m[31m[01:03pm] Doctor has next visitor
+[0m[34m[01:03pm - 01:08pm] Sales representative 3 is in doctor's chamber
+[0m[31m[01:08pm] Doctor has next visitor
+[0m[34m[01:08pm - 01:18pm] Sales representative 5 is in doctor's chamber
+[0m	[01:12pm] Patient 21 arrives
+[31m[01:18pm] Doctor has next visitor
+[0m[34m[01:18pm -

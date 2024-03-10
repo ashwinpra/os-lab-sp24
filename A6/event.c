@@ -80,6 +80,7 @@ eventQ delevent ( eventQ E )
    int i, l, r, m;
 
    if (E.n > 0) {
+      // printf("Deleting event: %c %d\n", E.Q[0].type, E.Q[0].time);
       E.Q[0] = E.Q[E.n - 1];
       --E.n;
       i = 0;

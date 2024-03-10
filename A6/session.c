@@ -1,4 +1,64 @@
-n#include <stdio.h> 
+#ifndef PTHREAD_BARRIER_H_
+#define PTHREAD_BARRIER_H_
+
+#include <pthread.h>
+#include <errno.h>
+typedef int pthread_barrierattr_t;
+typedef struct
+{
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int count;
+    int tripCount;
+} pthread_barrier_t;
+int pthread_barrier_init(pthread_barrier_t *barrier, const pthread_barrierattr_t *attr, unsigned int count)
+{
+    if(count == 0)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    if(pthread_mutex_init(&barrier->mutex, 0) < 0)
+    {
+        return -1;
+    }
+    if(pthread_cond_init(&barrier->cond, 0) < 0)
+    {
+        pthread_mutex_destroy(&barrier->mutex);
+        return -1;
+    }
+    barrier->tripCount = count;
+    barrier->count = 0;
+    return 0;
+}
+int pthread_barrier_destroy(pthread_barrier_t *barrier)
+{
+    pthread_cond_destroy(&barrier->cond);
+    pthread_mutex_destroy(&barrier->mutex);
+    return 0;
+}
+int pthread_barrier_wait(pthread_barrier_t *barrier)
+{
+    pthread_mutex_lock(&barrier->mutex);
+    ++(barrier->count);
+    if(barrier->count >= barrier->tripCount)
+    {
+        barrier->count = 0;
+        pthread_cond_broadcast(&barrier->cond);
+        pthread_mutex_unlock(&barrier->mutex);
+        return 1;
+    }
+    else
+    {
+        pthread_cond_wait(&barrier->cond, &(barrier->mutex));
+        pthread_mutex_unlock(&barrier->mutex);
+        return 0;
+    }
+}
+#endif // PTHREAD_BARRIER_H_
+
+
+#include <stdio.h> 
 #include <stdlib.h> 
 #include <pthread.h> 
 #include <event.h>
@@ -241,6 +301,10 @@ int main() {
         vinfo nextvinfo;
         nextvinfo.duration = next.duration;
 
+        if(next.type == 'D') {
+            E = delevent(E);
+        }
+
         if(next.time > current_time){
             doc_arrived = 1;
         }
@@ -341,11 +405,6 @@ int main() {
                 printf("\t[%s] Salesrep %d arrives\n", timestr, num_salesreps);
             }
 
-            else if (next.type == 'D') {
-                E = delevent(E);
-                continue;
-            }
-
             if(doc_arrived == 2) {
                 get_time(timestr, current_time);
 
@@ -372,6 +431,7 @@ int main() {
                     pthread_cond_signal(&reporter_cond);
                     pthread_mutex_unlock(&reporter_mutex);
                     pthread_barrier_wait(&barrier);
+                    E = addevent(E, (event){'D', current_time, 0});
                 } 
                 else if(num_waiting_patients > 0) {
                     // patient has priority
@@ -382,6 +442,7 @@ int main() {
                     pthread_cond_signal(&patient_cond);
                     pthread_mutex_unlock(&patient_mutex);
                     pthread_barrier_wait(&barrier);
+                    E = addevent(E, (event){'D', current_time, 0});
                 } 
                 else if(num_waiting_salesreps > 0) {
                     pthread_mutex_lock(&salesrep_mutex);
@@ -391,6 +452,7 @@ int main() {
                     pthread_cond_signal(&salesrep_cond);
                     pthread_mutex_unlock(&salesrep_mutex);
                     pthread_barrier_wait(&barrier);
+                    E = addevent(E, (event){'D', current_time, 0});
                 }
 
             }
@@ -406,6 +468,7 @@ int main() {
         if(doc_arrived == 1){
             // wait for previous visitors to be served
             while(current_time < next.time && (num_waiting_reporters > 0 || num_waiting_patients > 0 || num_waiting_salesreps > 0)){
+
                 pthread_mutex_lock(&doctor_mutex);
                 doc_done = 1;
                 pthread_cond_signal(&doctor_cond);
@@ -418,6 +481,8 @@ int main() {
                     num_waiting_reporters--;
                     pthread_cond_signal(&reporter_cond);
                     pthread_mutex_unlock(&reporter_mutex);
+                    pthread_barrier_wait(&barrier);
+                    E = addevent(E, (event){'D', current_time, 0});
                 } 
                 else if(num_waiting_patients > 0) {
                     // patient has priority
@@ -427,6 +492,8 @@ int main() {
                     num_served_patients++;
                     pthread_cond_signal(&patient_cond);
                     pthread_mutex_unlock(&patient_mutex);
+                    pthread_barrier_wait(&barrier);
+                    E = addevent(E, (event){'D', current_time, 0});
                 } 
                 else if(num_waiting_salesreps > 0) {
                     pthread_mutex_lock(&salesrep_mutex);
@@ -435,9 +502,9 @@ int main() {
                     num_served_salesreps++;
                     pthread_cond_signal(&salesrep_cond);
                     pthread_mutex_unlock(&salesrep_mutex);
+                    pthread_barrier_wait(&barrier);
+                    E = addevent(E, (event){'D', current_time, 0});
                 }
-
-                pthread_barrier_wait(&barrier);
             }
 
             if(current_time < next.time){

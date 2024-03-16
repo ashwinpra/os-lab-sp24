@@ -54,7 +54,6 @@ void foothread_create(foothread_t *thread, foothread_attr_t *attr, int (*fn)(voi
 }
 
 void foothread_exit() {
-    // printf("Thread %d exited\n", gettid());
     if(mtx == -1) {
         mtx = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT);
         semctl(mtx, 0, SETVAL, 1);
@@ -86,10 +85,8 @@ void foothread_mutex_init(foothread_mutex_t *mutex) {
 }
 
 void foothread_mutex_lock(foothread_mutex_t *mutex) {     
-    // printf("Thread %d is trying to lock\n", gettid());
     P(mutex->semid);
     mutex->tid = gettid();
-    // printf("Mutex locked by thread %d\n", mutex->tid);
 }
 
 void foothread_mutex_unlock(foothread_mutex_t *mutex) {
@@ -102,7 +99,6 @@ void foothread_mutex_unlock(foothread_mutex_t *mutex) {
         return;
     }
 
-    // printf("Mutex unlocked by thread %d\n", mutex->tid);
     V(mutex->semid);
     mutex->tid = 0;
 }

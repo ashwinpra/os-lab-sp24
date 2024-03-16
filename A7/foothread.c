@@ -83,28 +83,13 @@ void foothread_mutex_init(foothread_mutex_t *mutex) {
     mutex->semid = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT);
     semctl(mutex->semid, 0, SETVAL,1);
     mutex->tid = 0;
-    printf("Initialized mutex with semid %d, value = %d\n", mutex->semid, semctl(mutex->semid, 0, GETVAL));
 }
 
 void foothread_mutex_lock(foothread_mutex_t *mutex) {     
     // printf("Thread %d is trying to lock\n", gettid());
-
-    if(mutex->tid == 0) {
-        mutex->tid = gettid();
-        P(mutex->semid);
-        // printf("Mutex locked by thread %d\n", mutex->tid);
-    }
-    else if(mutex->tid == gettid()) {
-        printf("Error: Mutex is already locked by this thread\n");
-    } 
-    else {
-        while(semctl(mutex->semid, 0, GETVAL) == 0) {
-            // printf("Thread %d is waiting to lock\n", gettid());
-        }
-        P(mutex->semid);
-        mutex->tid = gettid();
-        // printf("Mu2ex locked by thread %d\n", mutex->tid);
-    }
+    P(mutex->semid);
+    mutex->tid = gettid();
+    // printf("Mutex locked by thread %d\n", mutex->tid);
 }
 
 void foothread_mutex_unlock(foothread_mutex_t *mutex) {
@@ -127,30 +112,29 @@ void foothread_mutex_destroy(foothread_mutex_t *mutex) {
 }
 
 void foothread_barrier_init(foothread_barrier_t *barrier, int count) {
-    barrier = (foothread_barrier_t*)malloc(sizeof(foothread_barrier_t));
-    barrier->semid = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT);
+    foothread_mutex_init(&barrier->mtx);
+    barrier->semid = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT|0666);
     semctl(barrier->semid, 0, SETVAL, 0);
-    barrier->count_max = count;
-    barrier->count = count;
+
+    barrier->tripCount = count;
+    barrier->count = 0;
 }
 
 void foothread_barrier_wait(foothread_barrier_t *barrier) {
-
-    if(mtx == -1) {
-        mtx = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT);
-        semctl(mtx, 0, SETVAL, 1);
-    }
-
-    P(mtx);
-    barrier->count--;
-    if(barrier->count == 0) {
-        for(int i = 0; i < barrier->count_max; i++) {
+    foothread_mutex_lock(&barrier->mtx);
+    barrier->count++;
+    if(barrier->count == barrier->tripCount) {
+        for(int i = 0; i < barrier->tripCount-1; i++) {
             V(barrier->semid);
         }
-        barrier->count = barrier->count_max;
+
+        barrier->count = 0;
+        foothread_mutex_unlock(&barrier->mtx);
     }
-    V(mtx);
-    P(barrier->semid);
+    else {
+        foothread_mutex_unlock(&barrier->mtx);
+        P(barrier->semid);
+    }
 }
 
 void foothread_barrier_destroy(foothread_barrier_t *barrier) {

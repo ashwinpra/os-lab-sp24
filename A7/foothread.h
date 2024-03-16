@@ -31,10 +31,17 @@ typedef struct _foothread_mutex_t {
     int tid;
 } foothread_mutex_t;
 
-typedef struct _foothread_barrier_t {
-    int semid;
-    int count;
-    int count_max;
+// typedef struct _foothread_barrier_t {
+//     int semid;
+//     int count;
+//     int count_max;
+// } foothread_barrier_t;
+
+typedef struct {
+    foothread_mutex_t mtx;   // Mutex for mutual exclusion
+    int semid;            // Semaphore ID
+    int tripCount; // Count of threads to synchronize
+    int count;     // Counter to track arrived threads
 } foothread_barrier_t;
 
 void foothread_create(foothread_t*, foothread_attr_t*, int(*)(void*), void*);

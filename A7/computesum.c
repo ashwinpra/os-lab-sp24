@@ -8,39 +8,35 @@ int P[100];
 int num_children[100];
 int sum[100];
 foothread_mutex_t csmtx;
-foothread_barrier_t *barrier;
+foothread_barrier_t barrier[100];
 
 int node(void* arg) {
     int i = (int)arg;
 
-    // printf("Node %d: tid = %d\n", i, gettid());
-
     if(num_children[i] == 0) {
-        // printf("Node %d: tid = %d\n", i, gettid());
-        // printf("Leaf node \t%d\n", i);
         foothread_mutex_lock(&csmtx);
-        printf("Leaf node \t%d(%d) :: Enter a positive integer: ", i, gettid());
+        printf("Leaf node \t%d (%d):: Enter a positive integer: ", i , gettid());
         scanf("%d", &sum[i]);
-        // printf("Scanned\n");
         foothread_mutex_unlock(&csmtx);
-
-        // foothread_barrier_wait(&barrier[i]);
-    }
+        
+        foothread_barrier_wait(&barrier[i]);
+    } 
+    
     else {
-        printf("Node %d: not a root\n", i);
-        // wait for all it's children to finish
         for(int j = 0; j < num_children[i]; j++) {
+            printf("Waiting for barrier[%d] to open\n", i);
             foothread_barrier_wait(&barrier[i]);
         }
-        // now compute sum 
-        sum[i] = 0;
+
         foothread_mutex_lock(&csmtx);
         for(int j = 0; j < n; j++) {
             if(P[j] == i) {
+                printf("Adding sum[%d] to sum[%d]\n", j, i);
                 sum[i] += sum[j];
             }
         }
-        printf("Node %d(%d) :: Sum = %d\n", i, gettid(), sum[i]);
+        printf("Non-leaf node \t%d (%d):: Sum of children: %d\n", i, gettid(), sum[i]);
+        printf("\n");
         foothread_mutex_unlock(&csmtx);
     }
 
@@ -61,6 +57,8 @@ int main() {
         num_children[b]++;
     }
 
+    for(int i=0;i<n;i++) {printf("P[%d] = %d\n", i, P[i]);}
+
     // for(int i = 0; i < n; i++) {
     //     printf("Node %d has %d children\n", i, num_children[i]);
     // }
@@ -70,10 +68,15 @@ int main() {
     
     foothread_mutex_init(&csmtx);
 
-    barrier = (foothread_barrier_t*)malloc(n * sizeof(foothread_barrier_t));
+    // printf("Mutex: semid = %d\n", csmtx.semid);
+
+    // 1 barrier is made for each node for it to wait for all its children to finish
     for(int i = 0; i < n; i++) {
-        // it will have to wait for al of its children
-        foothread_barrier_init(&barrier[i], num_children[i]);
+        foothread_barrier_init(&barrier[i], num_children[i]+1);
+    }
+
+    for (int i = 0; i < n; i++) {
+        printf("barrier[%d] = %d, %d\n", i, barrier[i].tripCount, barrier[i].semid);
     }
 
     // create n threads for each node

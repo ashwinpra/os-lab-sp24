@@ -20,45 +20,58 @@ struct sembuf vop = {0, 1, 0};
 #define PROB_ILLEGAL 0.1
 #define T 250000
 
+typedef struct _pt_t {
+    int page;
+    int frame;
+    int lru_ctr;
+    int valid_bit;
+} pt_t;
+
 typedef struct _pagetable_t {
     int pid;
     int m_i; // number of required pages
-    int f_i; // number of allocated frames
-    int **PT; // Page Table
+    // int f_i; // number of allocated frames
+    pt_t *PT; // page table
     int total_PFs;
+    int total_invalid_refs;
     char *ref_str; // reference string
-    // todo: illegal accesses?
 } pagetable_t;
+
+
 
 
 int main(){
     srand(time(0));
 
     int k, m, f;
-    printf("Enter the number of processes: ");
+    printf("Enter the total number of processes: ");
     scanf("%d", &k);
     printf("Enter the Virtual Address Space size: ");
     scanf("%d", &m);
     printf("Enter the Physical Address Space size: ");
     scanf("%d", &f);
 
-    // page table
+    printf("Done");
+
+    // page table - also allocate space for the reference string and actual page table
     key_t key1 = ftok("master.c", 100);
-    int shmid1 = shmget(key1, k * sizeof(pagetable_t), IPC_CREAT | 0666);
+    int shmid1 = shmget(key1, k * sizeof(pagetable_t) + k * m * sizeof(pt_t), IPC_CREAT | 0666);
     pagetable_t *SM1 = (pagetable_t *)shmat(shmid1, NULL, 0);
+    memset(SM1, 0, k * sizeof(pagetable_t) + k * m * sizeof(pt_t));
+
+    pt_t *base_pointer = (pt_t *)(SM1 + k);
 
     for(int i=0; i<k; i++){
+        SM1[i].PT = base_pointer + i*m;
         SM1[i].m_i = rand() % m + 1;
-        SM1[i].f_i = 0;
-        SM1[i].PT = (int **)malloc(m * sizeof(int *));
         for(int j=0; j<m; j++){
-            SM1[i].PT[j] = (int *)malloc(3 * sizeof(int));
-            // todo: check
-            SM1[i].PT[j][0] = -1;
-            SM1[i].PT[j][1] = 0;
-            SM1[i].PT[j][2] = INT_MAX;
+            SM1[i].PT[j].page = j;
+            SM1[i].PT[j].frame = -1;
+            SM1[i].PT[j].valid_bit = 0; 
+            SM1[i].PT[j].lru_ctr = 0;
         }
         SM1[i].total_PFs = 0;
+        SM1[i].total_invalid_refs = 0; 
 
         // generate reference string : numbers separated by ":"
         // length between 2*m_i and 10*m_i
@@ -88,10 +101,9 @@ int main(){
     // for(int i=0; i<k; i++){
     //     printf("Process %d\n", i);
     //     printf("m_i: %d\n", SM1[i].m_i);
-    //     printf("f_i: %d\n", SM1[i].f_i);
     //     printf("PT: \n");
     //     for(int j=0; j<SM1[i].m_i; j++){
-    //         printf("%d %d %d\n", SM1[i].PT[j][0], SM1[i].PT[j][1], SM1[i].PT[j][2]);
+    //         printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
     //     }
     //     printf("total_PFs: %d\n", SM1[i].total_PFs);
     //     printf("ref_str: %s\n", SM1[i].ref_str);
@@ -99,13 +111,14 @@ int main(){
 
     // free frames list
     key_t key2 = ftok("master.c", 101);
-    int shmid2 = shmget(key2, f * sizeof(int), IPC_CREAT | 0666);
+    int shmid2 = shmget(key2, (f+1) * sizeof(int), IPC_CREAT | 0666);
     int *SM2 = (int *)shmat(shmid2, NULL, 0);   
 
     // 1 means free, 0 means occupied
     for (int i=0; i<f; i++) {
         SM2[i] = 1;
     }
+    SM2[f] = -1; // to identify the end
 
     // process to page number mapping
     key_t key3 = ftok("master.c", 102);

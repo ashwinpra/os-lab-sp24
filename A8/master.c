@@ -137,29 +137,29 @@ int main(){
     sprintf(msqid3_str, "%d", msqid3);
 
 
-    // // create scheduler
-    // if(fork()==0){
-    //     execlp("xterm", "xterm", "-T", "Scheduler", "-e", "./scheduler", msqid1_str, msqid2_str, NULL);
-    // }
+    // create scheduler
+    if(fork()==0){
+        execlp("xterm", "xterm", "-T", "Scheduler", "-e", "./scheduler", msqid1_str, msqid2_str, NULL);
+    }
 
-    // // create MMU
-    // if(fork()==0){
-    //     execlp("xterm", "xterm", "-T", "MMU", "-e", "./mmu", msqid2_str, msqid3_str, SM1_str, SM2_str, NULL);
-    // }
+    // create MMU
+    if(fork()==0){
+        execlp("xterm", "xterm", "-T", "MMU", "-e", "./mmu", msqid2_str, msqid3_str, SM1_str, SM2_str, NULL);
+    }
 
-    // // make k processes
-    // for(int i=0; i<k; i++){
-    //     usleep(T);
-    //     // generate reference string as string, numbers separated by ":"
-    //     int pid = fork(); 
-    //     if(pid!=0){
-    //         SM1[i] = pid;
-    //     }
-    //     if(pid==0){
-    //         execlp("xterm", "xterm", "-T", "Process", "-e", "./process", SM1[i].ref_str, msqid1_str, msqid3_str, NULL);
-    //     }
+    // make k processes
+    for(int i=0; i<k; i++){
+        usleep(T);
+        // generate reference string as string, numbers separated by ":"
+        int pid = fork(); 
+        if(pid!=0){
+            SM1[i] = pid;
+        }
+        if(pid==0){
+            execlp("xterm", "xterm", "-T", "Process", "-e", "./process", SM1[i].ref_str, msqid1_str, msqid3_str, NULL);
+        }
 
-    // }
+    }
 
 
 }

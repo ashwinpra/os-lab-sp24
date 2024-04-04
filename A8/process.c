@@ -30,17 +30,20 @@ typedef struct _msq3_t {
 
 int main(int argc, char const *argv[])
 {
+    printf("argc: %d\n", argc);
+    // while(1);
     if (argc != 4) {
         printf("Invalid number of arguments\n");
         exit(1);
     }
 
-    char *ref_str;
+    char ref_str[1000];
     strcpy(ref_str, argv[1]);
     int msqid1 = atoi(argv[2]);
     int msqid3 = atoi(argv[3]);
 
     printf("Process has started\n");
+    // while(1);
 
     key_t key = ftok("master.c", 110);
     int semid = semget(key, 1, IPC_CREAT | 0666);
@@ -57,6 +60,7 @@ int main(int argc, char const *argv[])
 
     // send reference string to scheduler, one number at a time
     // do strtok on ref_str until NULL
+    // while(1);
     char *token = strtok(ref_str, " ");
     while (token != NULL) {
         msq3_t msg3;

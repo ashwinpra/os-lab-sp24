@@ -41,6 +41,9 @@ int main(int argc, char const *argv[])
     key_t key = ftok("master.c", 110);
     int semid = semget(key, 1, IPC_CREAT | 0666);
 
+    key_t key2 = ftok("master.c", 106);
+    int sem_sched = semget(key2, 1, IPC_CREAT | 0666);
+
     // todo: check if empty and wait
 
     msq1_t msg1;
@@ -73,6 +76,7 @@ int main(int argc, char const *argv[])
     }
 
     // todo: signal master
+    V(sem_sched);
 
     return 0;
 }

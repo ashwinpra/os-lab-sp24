@@ -141,6 +141,11 @@ int main(){
     key_t key6 = ftok("master.c", 105);
     int msqid3 = msgget(key6, IPC_CREAT | 0666);
 
+    // semaphore between scheduler and master
+    key_t key7 = ftok("master.c", 106);
+    int sem_sched = semget(key7, 1, IPC_CREAT | 0666);
+    semctl(sem_sched, 0, SETVAL, 0);
+
     char SM1_str[10], SM2_str[10], SM3_str[10], msqid1_str[10], msqid2_str[10], msqid3_str[10];
     sprintf(SM1_str, "%d", shmid1);
     sprintf(SM2_str, "%d", shmid2);
@@ -166,13 +171,14 @@ int main(){
         // generate reference string as string, numbers separated by ":"
         int pid = fork(); 
         if(pid!=0){
-            SM1[i] = pid;
+            SM1[i].pid = pid;
         }
         if(pid==0){
             execlp("xterm", "xterm", "-T", "Process", "-e", "./process", SM1[i].ref_str, msqid1_str, msqid3_str, NULL);
         }
-
     }
+
+    P(sem_sched);
 
 
 }

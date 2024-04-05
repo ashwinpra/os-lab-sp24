@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
     scanf("%d", &n);
 
     for(i=0; i<n; i++){
-        int ret = fork();
+        int ret = fork(); 
         if(ret==0) printf("child %d\n", i);
         else printf("parent %d\n", i);
     }

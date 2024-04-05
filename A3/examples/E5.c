@@ -10,19 +10,21 @@
 int main()
 {
     char *msg = "hello";
-    char buff[MAX];
+    char buf[MAX];
     int p[2];
     pipe(p);
     int pid=fork();
 
     if(pid==0) {
+        sleep(5);
         printf("child exiting...\n");
     }
     else
     {
-        sleep(1); // child will exit before parent writes, so there is no reader
-        close(p[0]); 
-        int ret = write(p[1], msg, MAX);
+        // sleep(1);
+        close(p[1]); 
+        printf("Closed\n");
+        int ret = read(p[0], buf, MAX);
         printf("ret = %d\n", ret);
     }
 }

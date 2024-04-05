@@ -29,7 +29,7 @@ int node(void* arg) {
 
         foothread_mutex_lock(&csmtx);
         for(int j = 0; j < n; j++) {
-            if(P[j] == i) {
+            if(P[j] == i && i!=j) {
                 // printf("Adding sum[%d] to sum[%d]\n", j, i);
                 sum[i] += sum[j];
             }

@@ -54,6 +54,7 @@ void foothread_create(foothread_t *thread, foothread_attr_t *attr, int (*fn)(voi
 }
 
 void foothread_exit() {
+    
     if(mtx == -1) {
         mtx = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT);
         semctl(mtx, 0, SETVAL, 1);

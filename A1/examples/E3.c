@@ -46,7 +46,7 @@ int main()
             printf("\nChild %d: Work done...\n", i);
 
             /* Child process exits with status i (the loop variable) */
-            // exit(i+10);
+            // exit(i+10);1
         }
 
         /* The parent continues to the next iteration */

@@ -38,8 +38,7 @@ int main(int argc, char const *argv[])
     int msqid1 = atoi(argv[1]);
     int msqid2 = atoi(argv[2]);
 
-    key_t key = ftok("master.c", 110);
-    int semid = semget(key, 1, IPC_CREAT | 0666);
+    key_t key = ftok("master.c", 107);
 
     key_t key2 = ftok("master.c", 106);
     int sem_sched = semget(key2, 1, IPC_CREAT | 0666);
@@ -53,10 +52,15 @@ int main(int argc, char const *argv[])
         // wait for process to come
         msgrcv(msqid1, (void *)&msg1, sizeof(msq1_t), 0, 0);
 
-        printf("Scheduler: Process %d has arrived\n", msg1.pid);
+        int pid = msg1.pid;
+
+        printf("Scheduler: Process %d has arrived\n", pid);
+
+        // get the semaphore corresponding to the process
+        int sem_proc = semget(key+pid, 1, IPC_CREAT | 0666);
 
         // signal process to start
-        V(semid);
+        V(sem_proc);
 
         // wait for process to finish
         msgrcv(msqid2, (void *)&msg2, sizeof(msq2_t), 0, 0);

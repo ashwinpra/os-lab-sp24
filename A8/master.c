@@ -50,28 +50,40 @@ int main(){
     scanf("%d", &m);
     printf("Enter the Physical Address Space size: ");
     scanf("%d", &f);
+    fflush(stdout);
 
-    printf("Done");
+    printf("Done\n");
+    
 
     // page table - also allocate space for the reference string and actual page table
     key_t key1 = ftok("master.c", 100);
+     
     int shmid1 = shmget(key1, k * sizeof(pagetable_t) + k * m * sizeof(pt_t), IPC_CREAT | 0666);
+    
     pagetable_t *SM1 = (pagetable_t *)shmat(shmid1, NULL, 0);
-    memset(SM1, 0, k * sizeof(pagetable_t) + k * m * sizeof(pt_t));
+    
+    // memset(SM1, 0, k * sizeof(pagetable_t) + k * m * sizeof(pt_t));
+   
 
     pt_t *base_pointer = (pt_t *)(SM1 + k);
 
+    
     for(int i=0; i<k; i++){
+        // while(1);
         SM1[i].PT = base_pointer + i*m;
+        
         SM1[i].m_i = rand() % m + 1;
+        
         for(int j=0; j<m; j++){
             SM1[i].PT[j].page = j;
             SM1[i].PT[j].frame = -1;
             SM1[i].PT[j].valid_bit = 0; 
             SM1[i].PT[j].lru_ctr = 0;
         }
+        
         SM1[i].total_PFs = 0;
         SM1[i].total_invalid_refs = 0; 
+        
 
         // generate reference string : numbers separated by ":"
         // length between 2*m_i and 10*m_i
@@ -95,19 +107,20 @@ int main(){
                 }
             }
         }
+        
     }
 
-    // // print everything for checking
-    // for(int i=0; i<k; i++){
-    //     printf("Process %d\n", i);
-    //     printf("m_i: %d\n", SM1[i].m_i);
-    //     printf("PT: \n");
-    //     for(int j=0; j<SM1[i].m_i; j++){
-    //         printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
-    //     }
-    //     printf("total_PFs: %d\n", SM1[i].total_PFs);
-    //     printf("ref_str: %s\n", SM1[i].ref_str);
-    // }
+    // print everything for checking
+    for(int i=0; i<k; i++){
+        printf("Process %d\n", i);
+        printf("m_i: %d\n", SM1[i].m_i);
+        printf("PT: \n");
+        for(int j=0; j<SM1[i].m_i; j++){
+            printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
+        }
+        printf("total_PFs: %d\n", SM1[i].total_PFs);
+        printf("ref_str: %s\n", SM1[i].ref_str);
+    }
 
     // free frames list
     key_t key2 = ftok("master.c", 101);
@@ -146,13 +159,24 @@ int main(){
     int sem_sched = semget(key7, 1, IPC_CREAT | 0666);
     semctl(sem_sched, 0, SETVAL, 0);
 
-    char SM1_str[10], SM2_str[10], SM3_str[10], msqid1_str[10], msqid2_str[10], msqid3_str[10];
+    // k semaphores for k processes, between scheduler and process
+    key_t key8 = ftok("master.c", 107);
+    for(int i=0;i<k;i++){
+        int semid = semget(key8+i, 1, IPC_CREAT | 0666);
+        semctl(semid, 0, SETVAL, 0);
+    }
+
+    char SM1_str[10], SM2_str[10], SM3_str[10], msqid1_str[10], msqid2_str[10], msqid3_str[10], k_str[10], m_str[10], f_str[10];
     sprintf(SM1_str, "%d", shmid1);
     sprintf(SM2_str, "%d", shmid2);
     sprintf(SM3_str, "%d", shmid3);
     sprintf(msqid1_str, "%d", msqid1);
     sprintf(msqid2_str, "%d", msqid2);
     sprintf(msqid3_str, "%d", msqid3);
+    sprintf(k_str, "%d", k);
+    sprintf(m_str, "%d", m);
+    sprintf(f_str, "%d", f);
+
 
 
     // create scheduler
@@ -162,19 +186,18 @@ int main(){
 
     // create MMU
     if(fork()==0){
-        execlp("xterm", "xterm", "-T", "MMU", "-e", "./mmu", msqid2_str, msqid3_str, SM1_str, SM2_str, NULL);
+        execlp("xterm", "xterm", "-T", "MMU", "-e", "./mmu", msqid2_str, msqid3_str, SM1_str, SM2_str,k_str, m_str, f_str, NULL);
     }
 
     // make k processes
     for(int i=0; i<k; i++){
         usleep(T);
         // generate reference string as string, numbers separated by ":"
-        int pid = fork(); 
-        if(pid!=0){
-            SM1[i].pid = pid;
-        }
-        if(pid==0){
-            execlp("xterm", "xterm", "-T", "Process", "-e", "./process", SM1[i].ref_str, msqid1_str, msqid3_str, NULL);
+        if(fork()==0){
+            SM1[i].pid = i;
+            char i_str[10];
+            sprintf(i_str, "%d", i);
+            execlp("xterm", "xterm", "-T", "Process", "-e", "./process", SM1[i].ref_str, msqid1_str, msqid3_str, i_str, NULL);
         }
     }
 

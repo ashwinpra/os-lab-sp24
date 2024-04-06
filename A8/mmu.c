@@ -80,6 +80,26 @@ int main(int argc, char *argv[]){
 
     int shmid1 = atoi(argv[3]);
     pagetable_t *SM1 = (pagetable_t *)shmat(shmid1, NULL, 0);
+    int k = atoi(argv[5]);
+    int m = atoi(argv[6]);
+    int f = atoi(argv[7]);
+
+    pt_t *base_pointer = (pt_t *)(SM1 + k);
+
+
+    // print everything for checking
+    // for(int i=0; i<3; i++){
+    //     printf("Process %d\n", i);
+    //     printf("m_i: %d\n", SM1[i].m_i);
+    //     printf("PT: \n");
+    //     SM1[i].PT = base_pointer + i*m;
+    //     // sleep(5);
+    //     for(int j=0; j<m; j++){
+    //         printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
+    //         // sleep(3);
+    //     }
+    //     printf("total_PFs: %d\n", SM1[i].total_PFs);
+    // }
 
     int shmid2=atoi(argv[4]);
     int *SM2=(int *)shmat(shmid2,NULL,0);
@@ -103,14 +123,17 @@ process.*/
         count++;
 
         int page=m3.num;
+        int pid=m3.pid;
         printf("page number received: %d\n",page);
+        printf("pid received: %d\n",pid);
         // while(1);
+        sleep(2);
 
         if(page==-2){
             printf("TRYING TO ACCESS INVALID PAGE REFERENCE\n");
             msq2_t m2;
             m2.type=2;
-            m2.pid=m3.pid;
+            m2.pid=pid;
             if(msgsnd(msqid2, &m2, sizeof(m2), 0) == -1){
                 perror("msgsnd");
                 exit(1);
@@ -119,14 +142,21 @@ process.*/
 
         }else{
             int index=-1;
-            int total_entires=sizeof(SM1)/sizeof(SM1[0]);
+            // int total_entries=sizeof(SM1)/sizeof(SM1[0]);
+            int total_entries=k;
+            printf("total entries: %d\n",total_entries);
 
-            for(int i=0;i<total_entires;i++){
+            for(int i=0;i<total_entries;i++){
+                printf("pid is %d\n",SM1[i].pid);
                 if(SM1[i].pid==m3.pid){
                     index=i;
                     break;
                 }
             }
+            printf("index is %d\n",index);
+            printf("page is %d\n",page);
+            sleep(1);
+            // while(1);
 
             if(page == -9){
                 // process has completed its execution
@@ -145,17 +175,22 @@ process.*/
                 // send Type II message to scheduler
                 msq2_t m2;
                 m2.type=2;
-                m2.pid=m3.pid;
+                m2.pid=pid;
                 if(msgsnd(msqid2, &m2, sizeof(m2), 0) == -1){
                     perror("msgsnd");
                     exit(1);
                 }
 
-                // break;
-                break;
+                
             }
             else{
                 // check if page is already in page table
+                printf("here\n");
+                // sleep(10);  
+                printf("SM1[index].PT[page].page is %d\n",SM1[index].PT[page].page);
+                // sleep(10);
+                printf("SM1[index].PT[page].frame is %d\n",SM1[index].PT[page].frame);
+                sleep(3);
                 
                 if(SM1[index].PT[page].frame!=-1){
                     // page is already in page table
@@ -192,6 +227,8 @@ process.*/
                         }
                     }
 
+                    printf("free frame is %d\n",free_frame);
+                    sleep(3);
                     if(free_frame!=-1){
                         // free frame is available
                         SM1[index].PT[page].frame=free_frame;
@@ -221,7 +258,7 @@ process.*/
 
                         msq2_t m2;
                         m2.type=1;
-                        m2.pid=m3.pid;
+                        m2.pid=pid;
                         if(msgsnd(msqid2, &m2, sizeof(m2), 0) == -1){
                             perror("msgsnd");
                             exit(1);

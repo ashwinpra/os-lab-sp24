@@ -138,6 +138,7 @@ int main(int argc, char *argv[]){
             m2.pid=pid;
             if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                 perror("msgsnd");
+                sleep(5);
                 exit(1);
             }
             
@@ -164,16 +165,45 @@ int main(int argc, char *argv[]){
             if(page == -9){
                 // process has completed its execution
                 // update free-frame list and release all allocated frames
+
+                printf("-9 received\n");
                 for(int i=0;i<SM1[index].m_i;i++){
                     if(SM1[index].PT[i].frame!=-1){
                         SM2[SM1[index].PT[i].frame]=1;
                         SM1[index].PT[i].frame=-1;
                         SM1[index].PT[i].valid_bit=0;
-                        SM1[index].PT[i].lru_ctr=INT_MAX;
+                        SM1[index].PT[i].lru_ctr=0;
                     }
                 }
-
+                printf("Frames released\n");
                 // send Type II message to scheduler
+                msq2_t m2;
+                m2.type=2;
+                m2.pid=pid;
+                printf("here\n");
+                fflush(stdout);
+                if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
+                     printf("here\n");
+                     fflush(stdout);
+                    perror("msgsnd");
+                    sleep(5);
+                    exit(1);
+                }
+                printf("Sent message type %ld, pid %d", m2.type, m2.pid);
+                fflush(stdout);
+
+                
+            }else if(page>= SM1[index].m_i){
+                // invalid page reference
+                printf("Invalid page reference\n");
+                for(int i=0;i<SM1[index].m_i;i++){
+                    if(SM1[index].PT[i].frame!=-1){
+                        SM2[SM1[index].PT[i].frame]=1;
+                        SM1[index].PT[i].frame=-1;
+                        SM1[index].PT[i].valid_bit=0;
+                        SM1[index].PT[i].lru_ctr=0;
+                    }
+                }
                 msq2_t m2;
                 m2.type=2;
                 m2.pid=pid;
@@ -183,20 +213,29 @@ int main(int argc, char *argv[]){
                     exit(1);
                 }
 
-                
+                msq3_t m3;
+                    m3.type=2;
+                    m3.num=-2;
+                    m3.pid=pid;
+                    printf("Sending message: [%d] %d\n",m3.pid,m3.num);
+                    if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
+                        perror("msgsnd");
+                        sleep(5);
+                        exit(1);
+                    }
             }
             else {
                 // check if page is already in page table
                 // printf("here\n");
                 // sleep(10);  
                 printf("Reached this case\n");
-                sleep(2);
+                // sleep(2);
                 printf("index = %d, page = %d\n", index, page);
-                sleep(2);
+                // sleep(2);
                 printf("SM1[index].PT[page].page is %d\n",SM1[index].PT[page].page);
-                sleep(3);
+                // sleep(3);
                 printf("SM1[index].PT[page].frame is %d\n",SM1[index].PT[page].frame);
-                sleep(3);
+                sleep(1);
                 
                 if(SM1[index].PT[page].frame!=-1){
                     printf("Page is present\n");
@@ -209,6 +248,7 @@ int main(int argc, char *argv[]){
                     printf("Sending message: [%d] %d\n",m3.pid,m3.num);
                     if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
                         perror("msgsnd");
+                        sleep(5);
                         exit(1);
                     }
                     SM1[index].PT[page].lru_ctr=count;
@@ -218,6 +258,7 @@ int main(int argc, char *argv[]){
                     // page fault
                     // send -1 to process
                     printf("Page fault, gotta load\n");
+                    sleep(2);
                     msq3_t m3;
                     m3.type=2;
                     m3.num=-1;
@@ -225,7 +266,13 @@ int main(int argc, char *argv[]){
                     printf("Sending message: [%d] %d\n",m3.pid,m3.num);
                     if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
                         perror("msgsnd");
+                        sleep(5);
                         exit(1);
+                    }
+
+                    //print the PT table
+                    for(int i=0;i<SM1[index].m_i;i++){
+                        printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[index].PT[i].page, SM1[index].PT[i].frame, SM1[index].PT[i].valid_bit, SM1[index].PT[i].lru_ctr);
                     }
 
                     // invoke PageFaultHandler
@@ -233,14 +280,21 @@ int main(int argc, char *argv[]){
                     // else, do local page replacement
 
                     int free_frame=-1;
-                    for(int i=0;i<sizeof(SM2)/sizeof(SM2[0]);i++){
-                        if(SM2[i]==1){
-                            free_frame=i;
+                    int ind=0;
+                    while(1){
+                        
+                        printf("i= %d\n",ind);
+                        printf("SM2[i] is %d\n",SM2[ind]);
+                        if(SM2[ind]==-1) break;
+                        if(SM2[ind]==1){
+                            free_frame=ind;
                             break;
                         }
+                        ind++;
                     }
 
                     printf("free frame is %d\n",free_frame);
+                    sleep(1);
                     if(free_frame!=-1){
                         // free frame is available
                         SM1[index].PT[page].frame=free_frame;
@@ -251,29 +305,50 @@ int main(int argc, char *argv[]){
                     }
                     else{
                         // local page replacement
+                        printf("here\n");
                         int min_lru=INT_MAX;
                         int victim_page=-1;
                         for(int i=0;i<SM1[index].m_i;i++){
-                            if(SM1[index].PT[i].valid_bit!=1) continue; 
+                            if(SM1[index].PT[i].frame==-1) continue; 
+                            printf("SM1[index].PT[%d].lru_ctr is %d\n",i,SM1[index].PT[i].lru_ctr);
                             if(SM1[index].PT[i].lru_ctr<min_lru){
                                 min_lru=SM1[index].PT[i].lru_ctr;
                                 victim_page=i;
                             }
                         }
+                        printf("Victim page is %d\n",victim_page);
+                        if(victim_page!=-1){
+                           SM1[index].PT[page].frame=SM1[index].PT[victim_page].frame;
 
-                        SM2[SM1[index].PT[victim_page].frame]=1;
-                        SM1[index].PT[victim_page].frame=-1;
-                        SM1[index].PT[victim_page].valid_bit=0;
-                        SM1[index].PT[page].frame=SM1[index].PT[victim_page].frame;
-                        SM1[index].PT[page].valid_bit=1;
-                        SM1[index].PT[page].lru_ctr=count;     
+                            SM1[index].PT[victim_page].frame=-1;
+                            SM1[index].PT[victim_page].valid_bit=0;
+                            
+                            SM1[index].PT[page].valid_bit=1;
+                            SM1[index].PT[page].lru_ctr=count; 
+                        }
+                        sleep(1);
+
+                        // SM2[SM1[index].PT[victim_page].frame]=1;
+
+                        
+                        
+                            
                     }
+
+                        //print the PT table
+                    for(int i=0;i<SM1[index].m_i;i++){
+                        printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[index].PT[i].page, SM1[index].PT[i].frame, SM1[index].PT[i].valid_bit, SM1[index].PT[i].lru_ctr);
+                    }
+
+
+                    
                         // send Type I message to scheduler
                         msq2_t m2;
                         m2.type=1;
                         m2.pid=pid;
                         if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                             perror("msgsnd");
+                            sleep(5);
                             exit(1);
                         }
                         printf("Sent message type %ld, pid %d", m2.type, m2.pid);
@@ -286,6 +361,6 @@ int main(int argc, char *argv[]){
         }
     }
 
-
+    sleep(5);
     return 0;
 }

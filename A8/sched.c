@@ -57,6 +57,16 @@ int main(int argc, char const *argv[])
 
         printf("Scheduler: Process %d has arrived\n", pid);
 
+        //   msgrcv(msqid1, (void *)&msg1, sizeof(int), 0, 0);
+        //  pid = msg1.pid;
+
+        // printf("Scheduler: Process %d has arrived\n", pid);
+
+        //   msgrcv(msqid1, (void *)&msg1, sizeof(int), 0, 0);
+        //  pid = msg1.pid;
+
+        // printf("Scheduler: Process %d has arrived\n", pid);
+
         // get the semaphore corresponding to the process
         int sem_proc = semget(key+pid, 1, IPC_CREAT | 0666);
 
@@ -76,7 +86,8 @@ int main(int argc, char const *argv[])
             printf("Scheduler: Process %d has been re-added to ready queue\n", msg2.pid);
             msg1.pid = msg2.pid;
             msg1.type = 1;
-            msgsnd(msqid1, (void *)&msg1, sizeof(msq1_t) - sizeof(long), 0);
+            int val=msgsnd(msqid1, (void *)&msg1, sizeof(int), 0);
+            printf("msgsnd returned %d\n", val);
         }
 
         else if(msg2.type == 2) {

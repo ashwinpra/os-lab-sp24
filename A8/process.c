@@ -121,6 +121,9 @@ int main(int argc, char const *argv[])
 
     printf("Sending [%d] %d", msg3.pid, msg3.num);
     msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0);
+
+    //free the page table frames
+    //free the frames
     
     printf("Process %d: Terminating\n", pid);
 

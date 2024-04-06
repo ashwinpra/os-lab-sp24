@@ -195,6 +195,51 @@ int main(){
     sprintf(m_str, "%d", m);
     sprintf(f_str, "%d", f);
 
+    //allocate frames proprtionate to m_i to all the processes
+    int cumulative_m_i = 0;
+    for(int i=0; i<k; i++){
+        cumulative_m_i += SM1[i].m_i;
+    }
+
+    int allocated=0;
+    for(int i=0;i<k-1;i++){
+        SM1[i].total_PFs=(SM1[i].m_i*f)/cumulative_m_i;
+        allocated+=SM1[i].total_PFs;
+    }
+
+    SM1[k-1].total_PFs=f-allocated;
+
+    int frame_num=0;
+
+    for(int i=0;i<k;i++){
+        int count=0;
+        for(int j=0;j<SM1[i].m_i;j++){
+            if(count>=SM1[i].total_PFs) break;
+
+            SM2[frame_num]=0;
+            SM1[i].PT[j].frame=frame_num;
+            SM1[i].PT[j].valid_bit=1;
+
+            frame_num++;
+            count++;
+        }
+    }
+
+    // print everything for checking
+    for(int i=0; i<k; i++){
+        printf("Process %d\n", i);
+        printf("m_i: %d\n", SM1[i].m_i);
+        printf("PT: \n");
+        for(int j=0; j<SM1[i].m_i; j++){
+            printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
+        }
+        printf("total_PFs: %d\n", SM1[i].total_PFs);
+        printf("ref_str: %s\n", SM1[i].ref_str);
+    }
+
+    
+
+
 
 
     // create scheduler

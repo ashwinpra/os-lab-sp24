@@ -38,6 +38,8 @@ int main(int argc, char const *argv[])
     int msqid1 = atoi(argv[1]);
     int msqid2 = atoi(argv[2]);
 
+    printf("msqid1= %d, msqid2= %d\n", msqid1, msqid2);
+
     key_t key = ftok("master.c", 107);
 
     key_t key2 = ftok("master.c", 106);
@@ -50,8 +52,7 @@ int main(int argc, char const *argv[])
 
     while (1) {
         // wait for process to come
-        msgrcv(msqid1, (void *)&msg1, sizeof(msq1_t), 0, 0);
-
+        msgrcv(msqid1, (void *)&msg1, sizeof(int), 0, 0);
         int pid = msg1.pid;
 
         printf("Scheduler: Process %d has arrived\n", pid);
@@ -60,16 +61,17 @@ int main(int argc, char const *argv[])
         int sem_proc = semget(key+pid, 1, IPC_CREAT | 0666);
 
         // signal process to start
+        printf("Signalling process %d", pid);
         V(sem_proc);
 
         // wait for process to finish
-        msgrcv(msqid2, (void *)&msg2, sizeof(msq2_t), 0, 0);
+        msgrcv(msqid2, (void *)&msg2, sizeof(msq2_t) - sizeof(long), 0, 0);
 
         if(msg2.type == 1) {
             printf("Scheduler: Process %d has been re-added to ready queue\n", msg2.pid);
             msg1.pid = msg2.pid;
             msg1.type = 1;
-            msgsnd(msqid1, (void *)&msg1, sizeof(msq1_t), 0);
+            msgsnd(msqid1, (void *)&msg1, sizeof(msq1_t) - sizeof(long), 0);
         }
 
         else if(msg2.type == 2) {
@@ -79,7 +81,6 @@ int main(int argc, char const *argv[])
         // todo: check termination condition
     }
 
-    // todo: signal master
     V(sem_sched);
 
     return 0;

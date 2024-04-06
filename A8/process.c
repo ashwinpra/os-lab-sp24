@@ -30,21 +30,23 @@ typedef struct _msq3_t {
 
 int main(int argc, char const *argv[])
 {
-    printf("argc: %d\n", argc);
-
+    // printf("argc: %d\n", argc);
     // while(1);
     if (argc != 5) {
         printf("Invalid number of arguments\n");
         exit(1);
-    }
+    }   
 
     char ref_str[1000];
     strcpy(ref_str, argv[1]);
+    // printf("Received ref_string: %s\n", ref_str);
     int msqid1 = atoi(argv[2]);
     int msqid3 = atoi(argv[3]);
     int pid = atoi(argv[4]);
 
-    printf("%d Process has started\n", pid);
+    printf("msqid1= %d, msqid3= %d, pid= %d\n", msqid1, msqid3, pid);
+
+    printf("Process [%d] has started\n", pid);
     // while(1);
 
     key_t key = ftok("master.c", 110);
@@ -56,31 +58,51 @@ int main(int argc, char const *argv[])
     msg1.type = 1;
     msg1.pid = pid;
 
-    printf("Sending process %d to ready queue\n", pid);
-    sleep(5);
-
     // send to ready queue 
-    msgsnd(msqid1, (void *)&msg1, sizeof(msq1_t), 0);
+    msgsnd(msqid1, (void *)&msg1, sizeof(msg1.pid), 0);
 
     // get the semaphore corresponding to the process
     int sem_sched = semget(key2+pid, 1, IPC_CREAT | 0666);
 
     // wait for scheduler to schedule this process 
+    printf("Waiting to be scheduled\n");
     P(sem_sched);
+    printf("Done waiting\n");
+    // sleep(5);
 
-    // send reference string to scheduler, one number at a time
-    // do strtok on ref_str until NULL
-    // while(1);
-    char *token = strtok(ref_str, " ");
+    // reference string has page numbers separated by colon 
+    // get them one by one and send to MMU
+    // char *token = strtok(ref_str, ":");
+
+    char* token = strtok(ref_str, ":");
+
+    /*
+    while(1){
+        printf("Sending page %d\n", atoi(token));
+        token = strtok(NULL, ":");
+        if(token == NULL) break;
+    }
+
+    sleep(5);
+
+    token = strtok(ref_str, ":");
+    */
+    
     while (token != NULL) {
+        // sleep(5);
+        printf("Sending page %d\n", atoi(token));
         msq3_t msg3;
         msg3.type = 1;
         msg3.num = atoi(token);
         msg3.pid = pid;
-        msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t), 0);
+
+        printf("Sending [%d] %d", msg3.pid, msg3.num);
+        msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0);
 
         // wait for mmu to allocate frame 
-        msgrcv(msqid3, (void *)&msg3, sizeof(msq3_t), 0, 0);
+        msgrcv(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0, 0);
+        printf("Received: [%d] %d\n",msg3.pid, msg3.num);
+        sleep(1);
 
         if(msg3.num == -1) {
             /*
@@ -102,7 +124,8 @@ int main(int argc, char const *argv[])
 
         }
 
-        token = strtok(NULL, " ");
+        token = strtok(NULL, ":");
+        printf("New token %s generated\n", token);
     }
 
     printf("Process %d: Execution complete\n", pid);
@@ -111,9 +134,12 @@ int main(int argc, char const *argv[])
     msg3.num = -9; 
     msg3.pid = pid;
 
-    msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t), 0);
+    printf("Sending [%d] %d", msg3.pid, msg3.num);
+    msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0);
     
     printf("Process %d: Terminating\n", pid);
+
+    sleep(10);
 
     return 0;
 }

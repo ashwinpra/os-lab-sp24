@@ -86,17 +86,16 @@ int main(int argc, char *argv[]){
 
     pt_t *base_pointer = (pt_t *)(SM1 + k);
 
-
     // print everything for checking
     // for(int i=0; i<3; i++){
     //     printf("Process %d\n", i);
     //     printf("m_i: %d\n", SM1[i].m_i);
     //     printf("PT: \n");
     //     SM1[i].PT = base_pointer + i*m;
-    //     // sleep(5);
-    //     for(int j=0; j<m; j++){
+    //     sleep(5);
+    //     for(int j=0; j<SM1[i].m_i; j++){
     //         printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
-    //         // sleep(3);
+    //         sleep(3);
     //     }
     //     printf("total_PFs: %d\n", SM1[i].total_PFs);
     // }
@@ -107,55 +106,58 @@ int main(int argc, char *argv[]){
     int msqid2=atoi(argv[1]);
     int msqid3=atoi(argv[2]);
 
+    printf("msqid2= %d, msqid3= %d\n", msqid2, msqid3);
+
     /*Master creates MMU and then MMU gets suspended. MMU wakes up after receiving the page
-number via message queue (MQ3) from process. It receives the page number from the process and
-checks in the page table for the corresponding process. There can be following two cases:
- If the page is already in page table, MMU sends back the corresponding frame number to the
-process.*/
+    number via message queue (MQ3) from process. It receives the page number from the process and
+    checks in the page table for the corresponding process. There can be following two cases:
+     If the page is already in page table, MMU sends back the corresponding frame number to the
+    process.*/
 
 
     while(1){
         msq3_t m3;
-        if(msgrcv(msqid3, &m3, sizeof(m3), 0, 0) == -1){
+        if(msgrcv(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0, 0) == -1){
             perror("msgrcv");
+            sleep(5);
             exit(1);
         }
         count++;
-
+        
         int page=m3.num;
         int pid=m3.pid;
-        printf("page number received: %d\n",page);
-        printf("pid received: %d\n",pid);
+        printf("Received: [%d] %d\n", pid, page); 
         // while(1);
-        sleep(2);
+        sleep(10);
 
         if(page==-2){
             printf("TRYING TO ACCESS INVALID PAGE REFERENCE\n");
             msq2_t m2;
             m2.type=2;
             m2.pid=pid;
-            if(msgsnd(msqid2, &m2, sizeof(m2), 0) == -1){
+            if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                 perror("msgsnd");
                 exit(1);
             }
             
 
         }else{
-            int index=-1;
+            int index=pid;
             // int total_entries=sizeof(SM1)/sizeof(SM1[0]);
             int total_entries=k;
-            printf("total entries: %d\n",total_entries);
+            // printf("total entries: %d\n",total_entries);
 
-            for(int i=0;i<total_entries;i++){
-                printf("pid is %d\n",SM1[i].pid);
-                if(SM1[i].pid==m3.pid){
-                    index=i;
-                    break;
-                }
-            }
-            printf("index is %d\n",index);
-            printf("page is %d\n",page);
-            sleep(1);
+            // for(int i=0;i<total_entries;i++){
+            //     // printf("pid is %d\n",SM1[i].pid);
+            //     if(SM1[i].pid==pid){
+            //         index=i;
+            //         break;
+            //     }
+            // }
+            // printf("Found index: %d\n", index);
+            // printf("index is %d\n",index);
+            // printf("page is %d\n",page);
+            // sleep(1);
             // while(1);
 
             if(page == -9){
@@ -170,51 +172,61 @@ process.*/
                     }
                 }
 
-
-
                 // send Type II message to scheduler
                 msq2_t m2;
                 m2.type=2;
                 m2.pid=pid;
-                if(msgsnd(msqid2, &m2, sizeof(m2), 0) == -1){
+                if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                     perror("msgsnd");
+                    sleep(5);
                     exit(1);
                 }
 
                 
             }
-            else{
+            else {
                 // check if page is already in page table
-                printf("here\n");
+                // printf("here\n");
                 // sleep(10);  
+                printf("Reached this case\n");
+                sleep(2);
+                printf("index = %d, page = %d\n", index, page);
+                sleep(2);
                 printf("SM1[index].PT[page].page is %d\n",SM1[index].PT[page].page);
-                // sleep(10);
+                sleep(3);
                 printf("SM1[index].PT[page].frame is %d\n",SM1[index].PT[page].frame);
                 sleep(3);
                 
                 if(SM1[index].PT[page].frame!=-1){
+                    printf("Page is present\n");
                     // page is already in page table
                     // send frame number to process
                     msq3_t m3;
                     m3.type=1;
                     m3.num=SM1[index].PT[page].frame;
-                    m3.pid=m3.pid;
-                    if(msgsnd(msqid3, &m3, sizeof(m3), 0) == -1){
+                    m3.pid=pid;
+                    printf("Sending message: [%d] %d\n",m3.pid,m3.num);
+                    if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
                         perror("msgsnd");
                         exit(1);
                     }
                     SM1[index].PT[page].lru_ctr=count;
-                }else{
+                }
+                
+                else{
                     // page fault
                     // send -1 to process
+                    printf("Page fault, gotta load\n");
                     msq3_t m3;
                     m3.type=1;
                     m3.num=-1;
-                    m3.pid=m3.pid;
-                    if(msgsnd(msqid3, &m3, sizeof(m3), 0) == -1){
+                    m3.pid=pid;
+                    printf("Sending message: [%d] %d\n",m3.pid,m3.num);
+                    if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
                         perror("msgsnd");
                         exit(1);
                     }
+
                     // invoke PageFaultHandler
                     // if free frame is available, update page table and free-frame list
                     // else, do local page replacement
@@ -235,7 +247,8 @@ process.*/
                         SM1[index].PT[page].valid_bit=1;
                         SM1[index].PT[page].lru_ctr=count;
                         SM2[free_frame]=0;
-                    }else{
+                    }
+                    else{
 
                         // local page replacement
                         int min_lru=INT_MAX;
@@ -253,32 +266,24 @@ process.*/
                         SM1[index].PT[victim_page].valid_bit=0;
                         SM1[index].PT[page].frame=SM1[index].PT[victim_page].frame;
                         SM1[index].PT[page].valid_bit=1;
-                        SM1[index].PT[page].lru_ctr=count;           
-                    // send Type I message to scheduler
+                        SM1[index].PT[page].lru_ctr=count;     
+
+                        // send Type I message to scheduler
 
                         msq2_t m2;
                         m2.type=1;
                         m2.pid=pid;
-                        if(msgsnd(msqid2, &m2, sizeof(m2), 0) == -1){
+                        if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                             perror("msgsnd");
                             exit(1);
                         }
-
-
-
-                }
-            }
-
-                
-               
+                    }
+                }               
                 // else, send -1 to process and invoke PageFaultHandler
                 // send Type I message to scheduler
             }
 
         }
-
-        
-        
     }
 
 

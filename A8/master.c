@@ -100,10 +100,10 @@ int main(){
             }
             else{
                 if(j==0){
-                    sprintf(SM1[i].ref_str, "%d", rand() % m);
+                    sprintf(SM1[i].ref_str, "%d", rand() % SM1[i].m_i);
                 }
                 else{
-                    sprintf(SM1[i].ref_str, "%s:%d", SM1[i].ref_str, rand() % m);
+                    sprintf(SM1[i].ref_str, "%s:%d", SM1[i].ref_str, rand() % SM1[i].m_i);
                 }
             }
         }
@@ -142,17 +142,35 @@ int main(){
         SM3[i] = 0;
     }
 
+
+    struct {
+        long type; 
+        char data[10];
+    } msg;
+
     // ready queue (message queue)
     key_t key4 = ftok("master.c", 103);
     int msqid1 = msgget(key4, IPC_CREAT | 0666);
+    printf("msqid1: %d\n", msqid1);
+    while (msgrcv(msqid1, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1) {
+        printf("Cleared mq1\n");
+    };
 
     // message queue for communication between scheduler and MMU
     key_t key5 = ftok("master.c", 104);
     int msqid2 = msgget(key5, IPC_CREAT | 0666);
+    printf("msqid2: %d\n", msqid2);
+    while (msgrcv(msqid2, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1){
+        printf("Cleared mq2\n");
+    };
 
     // message queue for communication between processes and MMU
     key_t key6 = ftok("master.c", 105);
     int msqid3 = msgget(key6, IPC_CREAT | 0666);
+    printf("msqid3: %d\n", msqid3);
+    while (msgrcv(msqid3, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1){
+        printf("Cleared mq3\n");
+    };
 
     // semaphore between scheduler and master
     key_t key7 = ftok("master.c", 106);
@@ -197,6 +215,7 @@ int main(){
             SM1[i].pid = i;
             char i_str[10];
             sprintf(i_str, "%d", i);
+            printf("Reference string for process %d: %s", i, SM1[i].ref_str);
             execlp("xterm", "xterm", "-T", "Process", "-e", "./process", SM1[i].ref_str, msqid1_str, msqid3_str, i_str, NULL);
         }
     }

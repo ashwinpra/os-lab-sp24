@@ -85,6 +85,7 @@ int main(int argc, char *argv[]){
     int f = atoi(argv[7]);
 
     pt_t *base_pointer = (pt_t *)(SM1 + k);
+    for(int i=0; i<k; i++) {SM1[i].PT = base_pointer + i*m;}
 
     // print everything for checking
     // for(int i=0; i<3; i++){
@@ -117,7 +118,7 @@ int main(int argc, char *argv[]){
 
     while(1){
         msq3_t m3;
-        if(msgrcv(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0, 0) == -1){
+        if(msgrcv(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 1, 0) == -1){
             perror("msgrcv");
             sleep(5);
             exit(1);
@@ -128,7 +129,7 @@ int main(int argc, char *argv[]){
         int pid=m3.pid;
         printf("Received: [%d] %d\n", pid, page); 
         // while(1);
-        sleep(10);
+        // sleep(10);
 
         if(page==-2){
             printf("TRYING TO ACCESS INVALID PAGE REFERENCE\n");
@@ -202,7 +203,7 @@ int main(int argc, char *argv[]){
                     // page is already in page table
                     // send frame number to process
                     msq3_t m3;
-                    m3.type=1;
+                    m3.type=2;
                     m3.num=SM1[index].PT[page].frame;
                     m3.pid=pid;
                     printf("Sending message: [%d] %d\n",m3.pid,m3.num);
@@ -218,7 +219,7 @@ int main(int argc, char *argv[]){
                     // send -1 to process
                     printf("Page fault, gotta load\n");
                     msq3_t m3;
-                    m3.type=1;
+                    m3.type=2;
                     m3.num=-1;
                     m3.pid=pid;
                     printf("Sending message: [%d] %d\n",m3.pid,m3.num);

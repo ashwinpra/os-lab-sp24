@@ -70,23 +70,7 @@ int main(int argc, char const *argv[])
     printf("Done waiting\n");
     // sleep(5);
 
-    // reference string has page numbers separated by colon 
-    // get them one by one and send to MMU
-    // char *token = strtok(ref_str, ":");
-
     char* token = strtok(ref_str, ":");
-
-    /*
-    while(1){
-        printf("Sending page %d\n", atoi(token));
-        token = strtok(NULL, ":");
-        if(token == NULL) break;
-    }
-
-    sleep(5);
-
-    token = strtok(ref_str, ":");
-    */
     
     while (token != NULL) {
         // sleep(5);
@@ -100,9 +84,9 @@ int main(int argc, char const *argv[])
         msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0);
 
         // wait for mmu to allocate frame 
-        msgrcv(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0, 0);
+        msgrcv(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 2, 0);
         printf("Received: [%d] %d\n",msg3.pid, msg3.num);
-        sleep(1);
+        // sleep(1);
 
         if(msg3.num == -1) {
             /*

@@ -96,10 +96,11 @@ int main(int argc, char const *argv[])
                 out of ready queue and scheduler enqueues it to the ready queue once page fault is
                 resolved
             */
-           printf("Process %d: Page fault, waiting to be loaded\n", pid);
-           //todo: wait for page fault handling
-           continue;
-
+            printf("Process %d: Page fault, waiting to be loaded\n", pid);
+            //todo: wait for page fault handling
+            P(sem_sched);
+            printf("Loaded again\n");
+            continue;
         }
 
         else if(msg3.num == -2) {

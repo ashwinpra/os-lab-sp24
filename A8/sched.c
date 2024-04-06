@@ -60,12 +60,17 @@ int main(int argc, char const *argv[])
         // get the semaphore corresponding to the process
         int sem_proc = semget(key+pid, 1, IPC_CREAT | 0666);
 
+        printf("Scheduler: Waiting for process %d to start\n", pid);
+
         // signal process to start
-        printf("Signalling process %d", pid);
+        printf("Signalling process %d\n", pid);
         V(sem_proc);
 
         // wait for process to finish
+        printf("Waiting for message\n");
         msgrcv(msqid2, (void *)&msg2, sizeof(msq2_t) - sizeof(long), 0, 0);
+
+        printf("Received message from process %d, type = %ld\n", msg2.pid, msg2.type);
 
         if(msg2.type == 1) {
             printf("Scheduler: Process %d has been re-added to ready queue\n", msg2.pid);

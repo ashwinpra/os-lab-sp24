@@ -241,16 +241,15 @@ int main(int argc, char *argv[]){
                     }
 
                     printf("free frame is %d\n",free_frame);
-                    sleep(3);
                     if(free_frame!=-1){
                         // free frame is available
                         SM1[index].PT[page].frame=free_frame;
                         SM1[index].PT[page].valid_bit=1;
                         SM1[index].PT[page].lru_ctr=count;
                         SM2[free_frame]=0;
+                        printf("Allocated to free frame");
                     }
                     else{
-
                         // local page replacement
                         int min_lru=INT_MAX;
                         int victim_page=-1;
@@ -268,9 +267,8 @@ int main(int argc, char *argv[]){
                         SM1[index].PT[page].frame=SM1[index].PT[victim_page].frame;
                         SM1[index].PT[page].valid_bit=1;
                         SM1[index].PT[page].lru_ctr=count;     
-
+                    }
                         // send Type I message to scheduler
-
                         msq2_t m2;
                         m2.type=1;
                         m2.pid=pid;
@@ -278,7 +276,8 @@ int main(int argc, char *argv[]){
                             perror("msgsnd");
                             exit(1);
                         }
-                    }
+                        printf("Sent message type %ld, pid %d", m2.type, m2.pid);
+        
                 }               
                 // else, send -1 to process and invoke PageFaultHandler
                 // send Type I message to scheduler

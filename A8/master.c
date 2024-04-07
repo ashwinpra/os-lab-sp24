@@ -255,5 +255,27 @@ int main(){
     P(sem_sched);
     printf("\nAll processes terminated\n");
 
+    //relese all the shared memory
+    shmdt(SM1);
+    shmdt(SM2);
+    shmdt(SM3);
+    shmctl(shmid1, IPC_RMID, NULL);
+    shmctl(shmid2, IPC_RMID, NULL);
+    shmctl(shmid3, IPC_RMID, NULL);
+
+    //release all the semaphores
+    semctl(sem_sched, 0, IPC_RMID, 0);
+    for(int i=0;i<k;i++){
+        int semid = semget(key8+i, 1, IPC_CREAT | 0666);
+        semctl(semid, 0, IPC_RMID, 0);
+    }
+
+    //release all the message queues
+    msgctl(msqid1, IPC_RMID, NULL);
+    msgctl(msqid2, IPC_RMID, NULL);
+    msgctl(msqid3, IPC_RMID, NULL);
+
+    return 0;
+
 
 }

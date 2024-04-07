@@ -82,7 +82,12 @@ int main(int argc, char *argv[]){
     while(1){
         if(terminated_processes>=k){
             //print total page faults and invalid references for each process
+            printf("\nfinished\n\n");
+            fprintf(fp,"\nfinished\n\n");
+
             for(int i=0;i<k;i++){
+
+                SM1[i].total_invalid_refs  +=SM1[i].total_PFs;
                 printf("Process %d: Total Page Faults: %d, Total Invalid References: %d\n",i,SM1[i].total_PFs,SM1[i].total_invalid_refs);
                 //write to file
                 fprintf(fp,"Process %d: Total Page Faults: %d, Total Invalid References: %d\n",i,SM1[i].total_PFs,SM1[i].total_invalid_refs);
@@ -206,9 +211,9 @@ int main(int argc, char *argv[]){
                 else{
                     // page fault
                     // send -1 to process
-                    printf("Page fault sequence - pid= %d, page nu. = %d\n", pid, page);
+                    printf("Page fault sequence - pid= %d, page no. = %d\n", pid, page);
                     //write to file
-                    fprintf(fp,"Page fault sequence - pid= %d, page nu. = %d\n", pid, page);
+                    fprintf(fp,"Page fault sequence - pid= %d, page no. = %d\n", pid, page);
                     sleep(2);
                     msq3_t m3;
                     m3.type=2;

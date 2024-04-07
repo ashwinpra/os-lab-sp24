@@ -202,19 +202,12 @@ int main(){
     }
 
     int allocated=0;
-    for(int i=0;i<k-1;i++){
-        SM1[i].total_PFs=(SM1[i].m_i*f)/cumulative_m_i;
-        allocated+=SM1[i].total_PFs;
-    }
-
-    SM1[k-1].total_PFs=f-allocated;
-
     int frame_num=0;
-
     for(int i=0;i<k;i++){
+        int page_frames=(SM1[i].m_i*f)/cumulative_m_i;
         int count=0;
         for(int j=0;j<SM1[i].m_i;j++){
-            if(count>=SM1[i].total_PFs) break;
+            if(count>=page_frames) break;
 
             SM2[frame_num]=0;
             SM1[i].PT[j].frame=frame_num;
@@ -223,7 +216,26 @@ int main(){
             frame_num++;
             count++;
         }
+
     }
+
+    // SM1[k-1].total_PFs=f-allocated;
+
+   
+
+    // for(int i=0;i<k;i++){
+    //     int count=0;
+    //     for(int j=0;j<SM1[i].m_i;j++){
+    //         if(count>=SM1[i].total_PFs) break;
+
+    //         SM2[frame_num]=0;
+    //         SM1[i].PT[j].frame=frame_num;
+    //         SM1[i].PT[j].valid_bit=1;
+
+    //         frame_num++;
+    //         count++;
+    //     }
+    // }
 
     // print everything for checking
     for(int i=0; i<k; i++){

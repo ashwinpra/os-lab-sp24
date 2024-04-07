@@ -204,6 +204,7 @@ int main(int argc, char *argv[]){
                         SM1[index].PT[i].lru_ctr=0;
                     }
                 }
+                SM1[index].total_invalid_refs++;
                 msq2_t m2;
                 m2.type=2;
                 m2.pid=pid;
@@ -269,6 +270,7 @@ int main(int argc, char *argv[]){
                         sleep(5);
                         exit(1);
                     }
+                    SM1[index].total_PFs++;
 
                     //print the PT table
                     for(int i=0;i<SM1[index].m_i;i++){

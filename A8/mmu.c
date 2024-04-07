@@ -1,29 +1,3 @@
-/*There can be following two cases:
- If the page is already in page table, MMU sends back the corresponding frame number to the
-process.
- Else in case of page fault
- Sends –1 to the process as frame number
- Invoke the PageFaultHandler (PFH) to handle the page fault
- If a free frame is available, then update the page table, and also update the
-corresponding free-frame list.
- If no free frame is available, then do local page replacement. Select victim
-page using LRU, replace it, bring in a new frame, and update the page table.
- Intimate the scheduler by sending Type I message to enqueue the current process and
-schedules the next process
- If MMU receives the page number –9 via message queue, then it infers that the process has
-completed its execution and it updates the free-frame list and releases all allocated frames.
-After this, MMU sends Type II message to the scheduler for scheduling the next process.
- If MMU receives –2, it prints “TRYING TO ACCESS INVALID PAGE REFERENCE” and
-sends Type II message to the scheduler for scheduling the next process.
- Please note that MMU maintains a global timestamp (count), which is incremented by 1 after
-every page reference.
-6.1 Implementation
-MMU is implemented in MMU.c. MMU will be executed via the Master process with four command
-line arguments: page table (SM1), free frame list (SM2), MQ2 and MQ3 as mentioned in Matser
-module. It will implement PFH as a function inside it and will call it whenever a page fault occurs. As
-mentioned in scheduler section after resolving the page fault or in case of invalid page reference, it
-sends corresponding notification messages (Type I or Type II) to the scheduler.*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,6 +48,7 @@ typedef struct _msq3_t {
 } msq3_t;
 
 int count=0;
+int terminated_processes=0;
 
 
 int main(int argc, char *argv[]){
@@ -87,19 +62,6 @@ int main(int argc, char *argv[]){
     pt_t *base_pointer = (pt_t *)(SM1 + k);
     for(int i=0; i<k; i++) {SM1[i].PT = base_pointer + i*m;}
 
-    // print everything for checking
-    // for(int i=0; i<3; i++){
-    //     printf("Process %d\n", i);
-    //     printf("m_i: %d\n", SM1[i].m_i);
-    //     printf("PT: \n");
-    //     SM1[i].PT = base_pointer + i*m;
-    //     sleep(5);
-    //     for(int j=0; j<SM1[i].m_i; j++){
-    //         printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
-    //         sleep(3);
-    //     }
-    //     printf("total_PFs: %d\n", SM1[i].total_PFs);
-    // }
 
     int shmid2=atoi(argv[4]);
     int *SM2=(int *)shmat(shmid2,NULL,0);
@@ -107,29 +69,39 @@ int main(int argc, char *argv[]){
     int msqid2=atoi(argv[1]);
     int msqid3=atoi(argv[2]);
 
-    printf("msqid2= %d, msqid3= %d\n", msqid2, msqid3);
+    //open file result.txt and write to it
+    FILE *fp=fopen("result.txt","w");
+    if(fp==NULL){
+        perror("fopen");
+        exit(1);
+    }
 
-    /*Master creates MMU and then MMU gets suspended. MMU wakes up after receiving the page
-    number via message queue (MQ3) from process. It receives the page number from the process and
-    checks in the page table for the corresponding process. There can be following two cases:
-     If the page is already in page table, MMU sends back the corresponding frame number to the
-    process.*/
+
 
 
     while(1){
+        if(terminated_processes>=k){
+            //print total page faults and invalid references for each process
+            for(int i=0;i<k;i++){
+                printf("Process %d: Total Page Faults: %d, Total Invalid References: %d\n",i,SM1[i].total_PFs,SM1[i].total_invalid_refs);
+                //write to file
+                fprintf(fp,"Process %d: Total Page Faults: %d, Total Invalid References: %d\n",i,SM1[i].total_PFs,SM1[i].total_invalid_refs);
+            }
+            break;
+        }
+
         msq3_t m3;
         if(msgrcv(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 1, 0) == -1){
             perror("msgrcv");
-            sleep(5);
             exit(1);
         }
         count++;
         
         int page=m3.num;
         int pid=m3.pid;
-        printf("Received: [%d] %d\n", pid, page); 
-        // while(1);
-        // sleep(10);
+        printf(" timestamp = %d, pid = %d, page = %d\n",count,pid,page);
+        //write to file
+        fprintf(fp," timestamp = %d, pid = %d, page = %d\n",count,pid,page);
 
         if(page==-2){
             printf("TRYING TO ACCESS INVALID PAGE REFERENCE\n");
@@ -138,30 +110,13 @@ int main(int argc, char *argv[]){
             m2.pid=pid;
             if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                 perror("msgsnd");
-                sleep(5);
                 exit(1);
             }
             
 
         }else{
             int index=pid;
-            // int total_entries=sizeof(SM1)/sizeof(SM1[0]);
-            int total_entries=k;
-            // printf("total entries: %d\n",total_entries);
-
-            // for(int i=0;i<total_entries;i++){
-            //     // printf("pid is %d\n",SM1[i].pid);
-            //     if(SM1[i].pid==pid){
-            //         index=i;
-            //         break;
-            //     }
-            // }
-            // printf("Found index: %d\n", index);
-            // printf("index is %d\n",index);
-            // printf("page is %d\n",page);
-            // sleep(1);
-            // while(1);
-
+           
             if(page == -9){
                 // process has completed its execution
                 // update free-frame list and release all allocated frames
@@ -175,27 +130,27 @@ int main(int argc, char *argv[]){
                         SM1[index].PT[i].lru_ctr=0;
                     }
                 }
-                printf("Frames released\n");
+                
                 // send Type II message to scheduler
                 msq2_t m2;
                 m2.type=2;
                 m2.pid=pid;
-                printf("here\n");
                 fflush(stdout);
                 if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
-                     printf("here\n");
                      fflush(stdout);
                     perror("msgsnd");
-                    sleep(5);
                     exit(1);
                 }
                 printf("Sent message type %ld, pid %d", m2.type, m2.pid);
                 fflush(stdout);
+                terminated_processes++;
 
                 
             }else if(page>= SM1[index].m_i){
                 // invalid page reference
-                printf("Invalid page reference\n");
+                printf("Invalid page reference- pid = %d, page no. = %d\n", pid, page);
+                //write to file
+                fprintf(fp,"Invalid page reference- pid = %d, page no. = %d\n", pid, page);
                 for(int i=0;i<SM1[index].m_i;i++){
                     if(SM1[index].PT[i].frame!=-1){
                         SM2[SM1[index].PT[i].frame]=1;
@@ -210,34 +165,28 @@ int main(int argc, char *argv[]){
                 m2.pid=pid;
                 if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                     perror("msgsnd");
-                    sleep(5);
                     exit(1);
                 }
 
                 msq3_t m3;
-                    m3.type=2;
-                    m3.num=-2;
-                    m3.pid=pid;
-                    printf("Sending message: [%d] %d\n",m3.pid,m3.num);
-                    if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
-                        perror("msgsnd");
-                        sleep(5);
+                m3.type=2;
+                m3.num=-2;
+                m3.pid=pid;
+                printf("Sending message: [%d] %d\n",m3.pid,m3.num);
+                if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
+                    perror("msgsnd");
                         exit(1);
-                    }
+                }
+                terminated_processes++;
             }
             else {
-                // check if page is already in page table
-                // printf("here\n");
-                // sleep(10);  
-                printf("Reached this case\n");
-                // sleep(2);
-                printf("index = %d, page = %d\n", index, page);
-                // sleep(2);
-                printf("SM1[index].PT[page].page is %d\n",SM1[index].PT[page].page);
-                // sleep(3);
-                printf("SM1[index].PT[page].frame is %d\n",SM1[index].PT[page].frame);
-                sleep(1);
                 
+              
+                printf("index = %d, page = %d\n", index, page);
+                // printf("SM1[index].PT[page].page is %d\n",SM1[index].PT[page].page);
+                // printf("SM1[index].PT[page].frame is %d\n",SM1[index].PT[page].frame);
+                
+                // check if page is already in page table 
                 if(SM1[index].PT[page].frame!=-1){
                     printf("Page is present\n");
                     // page is already in page table
@@ -249,7 +198,6 @@ int main(int argc, char *argv[]){
                     printf("Sending message: [%d] %d\n",m3.pid,m3.num);
                     if(msgsnd(msqid3, &m3, sizeof(msq3_t) - sizeof(long), 0) == -1){
                         perror("msgsnd");
-                        sleep(5);
                         exit(1);
                     }
                     SM1[index].PT[page].lru_ctr=count;
@@ -258,7 +206,9 @@ int main(int argc, char *argv[]){
                 else{
                     // page fault
                     // send -1 to process
-                    printf("Page fault, gotta load\n");
+                    printf("Page fault sequence - pid= %d, page nu. = %d\n", pid, page);
+                    //write to file
+                    fprintf(fp,"Page fault sequence - pid= %d, page nu. = %d\n", pid, page);
                     sleep(2);
                     msq3_t m3;
                     m3.type=2;
@@ -273,9 +223,9 @@ int main(int argc, char *argv[]){
                     SM1[index].total_PFs++;
 
                     //print the PT table
-                    for(int i=0;i<SM1[index].m_i;i++){
-                        printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[index].PT[i].page, SM1[index].PT[i].frame, SM1[index].PT[i].valid_bit, SM1[index].PT[i].lru_ctr);
-                    }
+                    // for(int i=0;i<SM1[index].m_i;i++){
+                    //     printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[index].PT[i].page, SM1[index].PT[i].frame, SM1[index].PT[i].valid_bit, SM1[index].PT[i].lru_ctr);
+                    // }
 
                     // invoke PageFaultHandler
                     // if free frame is available, update page table and free-frame list
@@ -295,7 +245,7 @@ int main(int argc, char *argv[]){
                         ind++;
                     }
 
-                    printf("free frame is %d\n",free_frame);
+                    // printf("free frame is %d\n",free_frame);
                     sleep(1);
                     if(free_frame!=-1){
                         // free frame is available
@@ -303,23 +253,22 @@ int main(int argc, char *argv[]){
                         SM1[index].PT[page].valid_bit=1;
                         SM1[index].PT[page].lru_ctr=count;
                         SM2[free_frame]=0;
-                        printf("Allocated to free frame");
+                        printf("Free frame found, allocated to free frame");
                     }
                     else{
                         // local page replacement
-                        printf("here\n");
                         int min_lru=INT_MAX;
                         int victim_page=-1;
                         for(int i=0;i<SM1[index].m_i;i++){
                             if(SM1[index].PT[i].frame==-1) continue; 
-                            printf("SM1[index].PT[%d].lru_ctr is %d\n",i,SM1[index].PT[i].lru_ctr);
                             if(SM1[index].PT[i].lru_ctr<min_lru){
                                 min_lru=SM1[index].PT[i].lru_ctr;
                                 victim_page=i;
                             }
                         }
-                        printf("Victim page is %d\n",victim_page);
+
                         if(victim_page!=-1){
+                            printf("page to be replaced is %d\n",victim_page);
                            SM1[index].PT[page].frame=SM1[index].PT[victim_page].frame;
 
                             SM1[index].PT[victim_page].frame=-1;
@@ -327,20 +276,14 @@ int main(int argc, char *argv[]){
                             
                             SM1[index].PT[page].valid_bit=1;
                             SM1[index].PT[page].lru_ctr=count; 
-                        }
-                        sleep(1);
-
-                        // SM2[SM1[index].PT[victim_page].frame]=1;
-
-                        
-                        
+                        } 
                             
                     }
 
                         //print the PT table
-                    for(int i=0;i<SM1[index].m_i;i++){
-                        printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[index].PT[i].page, SM1[index].PT[i].frame, SM1[index].PT[i].valid_bit, SM1[index].PT[i].lru_ctr);
-                    }
+                    // for(int i=0;i<SM1[index].m_i;i++){
+                    //     printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[index].PT[i].page, SM1[index].PT[i].frame, SM1[index].PT[i].valid_bit, SM1[index].PT[i].lru_ctr);
+                    // }
 
 
                     
@@ -350,19 +293,14 @@ int main(int argc, char *argv[]){
                         m2.pid=pid;
                         if(msgsnd(msqid2, &m2, sizeof(msq2_t) - sizeof(long), 0) == -1){
                             perror("msgsnd");
-                            sleep(5);
                             exit(1);
                         }
                         printf("Sent message type %ld, pid %d", m2.type, m2.pid);
         
                 }               
-                // else, send -1 to process and invoke PageFaultHandler
-                // send Type I message to scheduler
             }
-
         }
     }
 
-    sleep(5);
     return 0;
 }

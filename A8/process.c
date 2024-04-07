@@ -30,8 +30,7 @@ typedef struct _msq3_t {
 
 int main(int argc, char const *argv[])
 {
-    // printf("argc: %d\n", argc);
-    // while(1);
+   
     if (argc != 5) {
         printf("Invalid number of arguments\n");
         exit(1);
@@ -39,7 +38,6 @@ int main(int argc, char const *argv[])
 
     char ref_str[1000];
     strcpy(ref_str, argv[1]);
-    // printf("Received ref_string: %s\n", ref_str);
     int msqid1 = atoi(argv[2]);
     int msqid3 = atoi(argv[3]);
     int pid = atoi(argv[4]);
@@ -47,7 +45,6 @@ int main(int argc, char const *argv[])
     printf("msqid1= %d, msqid3= %d, pid= %d\n", msqid1, msqid3, pid);
 
     printf("Process [%d] has started\n", pid);
-    // while(1);
 
     key_t key = ftok("master.c", 110);
     int semid = semget(key, 1, IPC_CREAT | 0666);
@@ -67,7 +64,6 @@ int main(int argc, char const *argv[])
     // wait for scheduler to schedule this process 
     printf("Waiting to be scheduled\n");
     P(sem_sched);
-    printf("Done waiting\n");
     // sleep(5);
 
     char* token = strtok(ref_str, ":");
@@ -89,15 +85,8 @@ int main(int argc, char const *argv[])
         // sleep(1);
 
         if(msg3.num == -1) {
-            /*
-                It gets –1 as frame number from MMU and saves the current element of the reference
-                string for continuing its execution when it is scheduled next and goes into wait. MMU
-                invokes PFH routine to handle the page fault. Please note that the current process is
-                out of ready queue and scheduler enqueues it to the ready queue once page fault is
-                resolved
-            */
             printf("Process %d: Page fault, waiting to be loaded\n", pid);
-            //todo: wait for page fault handling
+            //wait for page fault handling
             P(sem_sched);
             printf("Loaded again\n");
             continue;
@@ -122,12 +111,7 @@ int main(int argc, char const *argv[])
     printf("Sending [%d] %d", msg3.pid, msg3.num);
     msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0);
 
-    //free the page table frames
-    //free the frames
-    
     printf("Process %d: Terminating\n", pid);
-
-    sleep(10);
 
     return 0;
 }

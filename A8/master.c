@@ -38,8 +38,6 @@ typedef struct _pagetable_t {
 } pagetable_t;
 
 
-
-
 int main(){
     srand(time(0));
 
@@ -52,7 +50,6 @@ int main(){
     scanf("%d", &f);
     fflush(stdout);
 
-    printf("Done\n");
     
 
     // page table - also allocate space for the reference string and actual page table
@@ -61,8 +58,6 @@ int main(){
     int shmid1 = shmget(key1, k * sizeof(pagetable_t) + k * m * sizeof(pt_t), IPC_CREAT | 0666);
     
     pagetable_t *SM1 = (pagetable_t *)shmat(shmid1, NULL, 0);
-    
-    // memset(SM1, 0, k * sizeof(pagetable_t) + k * m * sizeof(pt_t));
    
 
     pt_t *base_pointer = (pt_t *)(SM1 + k);
@@ -219,44 +214,23 @@ int main(){
 
     }
 
-    // SM1[k-1].total_PFs=f-allocated;
-
-   
-
-    // for(int i=0;i<k;i++){
-    //     int count=0;
-    //     for(int j=0;j<SM1[i].m_i;j++){
-    //         if(count>=SM1[i].total_PFs) break;
-
-    //         SM2[frame_num]=0;
-    //         SM1[i].PT[j].frame=frame_num;
-    //         SM1[i].PT[j].valid_bit=1;
-
-    //         frame_num++;
-    //         count++;
-    //     }
-    // }
 
     // print everything for checking
-    for(int i=0; i<k; i++){
-        printf("Process %d\n", i);
-        printf("m_i: %d\n", SM1[i].m_i);
-        printf("PT: \n");
-        for(int j=0; j<SM1[i].m_i; j++){
-            printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
-        }
-        printf("total_PFs: %d\n", SM1[i].total_PFs);
-        printf("ref_str: %s\n", SM1[i].ref_str);
-    }
-
-    
-
-
+    // for(int i=0; i<k; i++){
+    //     printf("Process %d\n", i);
+    //     printf("m_i: %d\n", SM1[i].m_i);
+    //     printf("PT: \n");
+    //     for(int j=0; j<SM1[i].m_i; j++){
+    //         printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
+    //     }
+    //     printf("total_PFs: %d\n", SM1[i].total_PFs);
+    //     printf("ref_str: %s\n", SM1[i].ref_str);
+    // }
 
 
     // create scheduler
     if(fork()==0){
-        execlp("xterm", "xterm", "-T", "Scheduler", "-e", "./scheduler", msqid1_str, msqid2_str, NULL);
+        execlp("xterm", "xterm", "-T", "Scheduler", "-e", "./scheduler", msqid1_str, msqid2_str, k_str, NULL);
     }
 
     // create MMU
@@ -277,7 +251,9 @@ int main(){
         }
     }
 
+    printf("All processes created\n");
     P(sem_sched);
+    printf("\nAll processes terminated\n");
 
 
 }

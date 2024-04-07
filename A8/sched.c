@@ -28,15 +28,18 @@ typedef struct _msq2_t {
     int pid;
 } msq2_t;
 
+int terminated_processes = 0;
+
 int main(int argc, char const *argv[])
 {
-    if (argc != 3) {
+    if (argc != 4) {
         printf("Invalid number of arguments\n");
         exit(1);
     }
 
     int msqid1 = atoi(argv[1]);
     int msqid2 = atoi(argv[2]);
+    int k = atoi(argv[3]);
 
     printf("msqid1= %d, msqid2= %d\n", msqid1, msqid2);
 
@@ -57,16 +60,6 @@ int main(int argc, char const *argv[])
 
         printf("Scheduler: Process %d has arrived\n", pid);
 
-        //   msgrcv(msqid1, (void *)&msg1, sizeof(int), 0, 0);
-        //  pid = msg1.pid;
-
-        // printf("Scheduler: Process %d has arrived\n", pid);
-
-        //   msgrcv(msqid1, (void *)&msg1, sizeof(int), 0, 0);
-        //  pid = msg1.pid;
-
-        // printf("Scheduler: Process %d has arrived\n", pid);
-
         // get the semaphore corresponding to the process
         int sem_proc = semget(key+pid, 1, IPC_CREAT | 0666);
 
@@ -83,18 +76,23 @@ int main(int argc, char const *argv[])
         printf("Received message from process %d, type = %ld\n", msg2.pid, msg2.type);
 
         if(msg2.type == 1) {
+            printf("Message Type 1\n");
+            printf("Page fault handled for process %d\n", msg2.pid);
             printf("Scheduler: Process %d has been re-added to ready queue\n", msg2.pid);
             msg1.pid = msg2.pid;
             msg1.type = 1;
-            int val=msgsnd(msqid1, (void *)&msg1, sizeof(int), 0);
-            printf("msgsnd returned %d\n", val);
+            msgsnd(msqid1, (void *)&msg1, sizeof(int), 0);
         }
 
         else if(msg2.type == 2) {
-            printf("Scheduler: Process %d has finished\n", msg2.pid);
+            printf("Message Type 2\n");
+            printf("Scheduler: Process %d has terminated\n", msg2.pid);
+            terminated_processes++;
         }
 
         // todo: check termination condition
+        if(terminated_processes >= k) break;
+
     }
 
     V(sem_sched);

@@ -239,9 +239,6 @@ int main(int argc, char *argv[]){
                     int free_frame=-1;
                     int ind=0;
                     while(1){
-                        
-                        printf("i= %d\n",ind);
-                        printf("SM2[i] is %d\n",SM2[ind]);
                         if(SM2[ind]==-1) break;
                         if(SM2[ind]==1){
                             free_frame=ind;

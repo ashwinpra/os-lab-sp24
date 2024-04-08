@@ -41,14 +41,10 @@ int main(int argc, char const *argv[])
     int msqid2 = atoi(argv[2]);
     int k = atoi(argv[3]);
 
-    printf("msqid1= %d, msqid2= %d\n", msqid1, msqid2);
-
     key_t key = ftok("master.c", 107);
 
     key_t key2 = ftok("master.c", 106);
     int sem_sched = semget(key2, 1, IPC_CREAT | 0666);
-
-    // todo: check if empty and wait
 
     msq1_t msg1;
     msq2_t msg2;
@@ -63,17 +59,11 @@ int main(int argc, char const *argv[])
         // get the semaphore corresponding to the process
         int sem_proc = semget(key+pid, 1, IPC_CREAT | 0666);
 
-        printf("Scheduler: Waiting for process %d to start\n", pid);
-
         // signal process to start
-        printf("Signalling process %d\n", pid);
         V(sem_proc);
 
         // wait for process to finish
-        printf("Waiting for message\n");
         msgrcv(msqid2, (void *)&msg2, sizeof(msq2_t) - sizeof(long), 0, 0);
-
-        printf("Received message from process %d, type = %ld\n", msg2.pid, msg2.type);
 
         if(msg2.type == 1) {
             printf("Message Type 1\n");
@@ -90,9 +80,7 @@ int main(int argc, char const *argv[])
             terminated_processes++;
         }
 
-        // todo: check termination condition
         if(terminated_processes >= k) break;
-
     }
 
     V(sem_sched);

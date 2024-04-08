@@ -42,10 +42,6 @@ int main(int argc, char const *argv[])
     int msqid3 = atoi(argv[3]);
     int pid = atoi(argv[4]);
 
-    printf("msqid1= %d, msqid3= %d, pid= %d\n", msqid1, msqid3, pid);
-
-    printf("Process [%d] has started\n", pid);
-
     key_t key = ftok("master.c", 110);
     int semid = semget(key, 1, IPC_CREAT | 0666);
 
@@ -62,27 +58,20 @@ int main(int argc, char const *argv[])
     int sem_sched = semget(key2+pid, 1, IPC_CREAT | 0666);
 
     // wait for scheduler to schedule this process 
-    printf("Waiting to be scheduled\n");
     P(sem_sched);
-    // sleep(5);
 
     char* token = strtok(ref_str, ":");
     
     while (token != NULL) {
-        // sleep(5);
-        printf("Sending page %d\n", atoi(token));
         msq3_t msg3;
         msg3.type = 1;
         msg3.num = atoi(token);
         msg3.pid = pid;
 
-        printf("Sending [%d] %d", msg3.pid, msg3.num);
         msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0);
 
         // wait for mmu to allocate frame 
         msgrcv(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 2, 0);
-        printf("Received: [%d] %d\n",msg3.pid, msg3.num);
-        // sleep(1);
 
         if(msg3.num == -1) {
             printf("Process %d: Page fault, waiting to be loaded\n", pid);
@@ -99,7 +88,6 @@ int main(int argc, char const *argv[])
         }
 
         token = strtok(NULL, ":");
-        printf("New token %s generated\n", token);
     }
 
     printf("Process %d: Execution complete\n", pid);
@@ -108,7 +96,6 @@ int main(int argc, char const *argv[])
     msg3.num = -9; 
     msg3.pid = pid;
 
-    printf("Sending [%d] %d", msg3.pid, msg3.num);
     msgsnd(msqid3, (void *)&msg3, sizeof(msq3_t) - sizeof(long), 0);
 
     printf("Process %d: Terminating\n", pid);

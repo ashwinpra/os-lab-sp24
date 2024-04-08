@@ -6,4 +6,7 @@ all:
 	./master
 
 clean:
-	rm master mmu sched process
+	-rm master mmu scheduler process result.txt
+	ipcrm --all=shm 
+	ipcrm --all=sem 
+	ipcrm --all=msg

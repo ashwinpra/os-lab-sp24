@@ -59,12 +59,10 @@ int main(){
     
     pagetable_t *SM1 = (pagetable_t *)shmat(shmid1, NULL, 0);
    
-
     pt_t *base_pointer = (pt_t *)(SM1 + k);
 
     
     for(int i=0; i<k; i++){
-        // while(1);
         SM1[i].PT = base_pointer + i*m;
         
         SM1[i].m_i = rand() % m + 1;
@@ -105,18 +103,6 @@ int main(){
         
     }
 
-    // print everything for checking
-    for(int i=0; i<k; i++){
-        printf("Process %d\n", i);
-        printf("m_i: %d\n", SM1[i].m_i);
-        printf("PT: \n");
-        for(int j=0; j<SM1[i].m_i; j++){
-            printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
-        }
-        printf("total_PFs: %d\n", SM1[i].total_PFs);
-        printf("ref_str: %s\n", SM1[i].ref_str);
-    }
-
     // free frames list
     key_t key2 = ftok("master.c", 101);
     int shmid2 = shmget(key2, (f+1) * sizeof(int), IPC_CREAT | 0666);
@@ -137,7 +123,6 @@ int main(){
         SM3[i] = 0;
     }
 
-
     struct {
         long type; 
         char data[10];
@@ -146,26 +131,17 @@ int main(){
     // ready queue (message queue)
     key_t key4 = ftok("master.c", 103);
     int msqid1 = msgget(key4, IPC_CREAT | 0666);
-    printf("msqid1: %d\n", msqid1);
-    while (msgrcv(msqid1, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1) {
-        printf("Cleared mq1\n");
-    };
+    while (msgrcv(msqid1, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1);
 
     // message queue for communication between scheduler and MMU
     key_t key5 = ftok("master.c", 104);
     int msqid2 = msgget(key5, IPC_CREAT | 0666);
-    printf("msqid2: %d\n", msqid2);
-    while (msgrcv(msqid2, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1){
-        printf("Cleared mq2\n");
-    };
+    while (msgrcv(msqid2, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1);
 
     // message queue for communication between processes and MMU
     key_t key6 = ftok("master.c", 105);
     int msqid3 = msgget(key6, IPC_CREAT | 0666);
-    printf("msqid3: %d\n", msqid3);
-    while (msgrcv(msqid3, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1){
-        printf("Cleared mq3\n");
-    };
+    while (msgrcv(msqid3, &msg, sizeof(msg.data), 0, IPC_NOWAIT) != -1);
 
     // semaphore between scheduler and master
     key_t key7 = ftok("master.c", 106);
@@ -214,20 +190,6 @@ int main(){
 
     }
 
-
-    // print everything for checking
-    // for(int i=0; i<k; i++){
-    //     printf("Process %d\n", i);
-    //     printf("m_i: %d\n", SM1[i].m_i);
-    //     printf("PT: \n");
-    //     for(int j=0; j<SM1[i].m_i; j++){
-    //         printf("Page: %d, Frame: %d, Valid Bit: %d, LRU Counter: %d\n", SM1[i].PT[j].page, SM1[i].PT[j].frame, SM1[i].PT[j].valid_bit, SM1[i].PT[j].lru_ctr);
-    //     }
-    //     printf("total_PFs: %d\n", SM1[i].total_PFs);
-    //     printf("ref_str: %s\n", SM1[i].ref_str);
-    // }
-
-
     // create scheduler
     if(fork()==0){
         execlp("xterm", "xterm", "-T", "Scheduler", "-e", "./scheduler", msqid1_str, msqid2_str, k_str, NULL);
@@ -246,12 +208,10 @@ int main(){
             SM1[i].pid = i;
             char i_str[10];
             sprintf(i_str, "%d", i);
-            printf("Reference string for process %d: %s", i, SM1[i].ref_str);
             execlp("xterm", "xterm", "-T", "Process", "-e", "./process", SM1[i].ref_str, msqid1_str, msqid3_str, i_str, NULL);
         }
     }
 
-    printf("All processes created\n");
     P(sem_sched);
     printf("\nAll processes terminated\n");
 
@@ -276,6 +236,4 @@ int main(){
     msgctl(msqid3, IPC_RMID, NULL);
 
     return 0;
-
-
 }
